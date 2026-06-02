@@ -1,0 +1,14 @@
+{
+  "name": "evoucher-system",
+  "version": "1.0.0",
+  "description": "e-Voucher Module & web system for the Department of Agriculture (demo build)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --no-warnings server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "license": "UNLICENSED",
+  "private": true
+}

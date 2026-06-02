@@ -1,0 +1,9 @@
+# Render Blueprint — lets Render set the service up automatically.
+services:
+  - type: web
+    name: evoucher-system
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node --no-warnings server.js
+    autoDeploy: true

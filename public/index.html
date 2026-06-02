@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-Voucher Module — Prototype | Department of Agriculture</title>
+<style>
+  :root{--green:#1b5e20;--green2:#2e7d32;--gold:#c79a00;--bg:#f4f6f4;--ink:#1f2a1f;--muted:#5e6b5e;--line:#dfe5df;--card:#fff;--side:#fff;--top:#1b5e20;--topink:#fff;--accent:#2e7d32}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+  a{color:inherit;text-decoration:none}
+  .hidden{display:none!important}
+  .topbar{background:var(--top);color:var(--topink);display:flex;align-items:center;gap:12px;padding:10px 18px;position:sticky;top:0;z-index:50}
+  .crest{width:34px;height:34px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:700;color:#3a2e00;flex-shrink:0}
+  .topbar h1{font-size:15px;margin:0;font-weight:600;line-height:1.2}
+  .topbar small{display:block;font-weight:400;opacity:.85;font-size:11px}
+  .topbar .spacer{flex:1}
+  .topbar .user{font-size:13px;text-align:right}
+  .topbar .badge{background:rgba(255,255,255,.16);padding:3px 9px;border-radius:20px;font-size:12px;color:var(--topink)}
+  .theme-sel{background:rgba(255,255,255,.16);color:var(--topink);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer}
+  .theme-sel option{color:#222}
+  .app{display:flex;min-height:calc(100vh - 54px)}
+  .side{width:235px;background:var(--side);border-right:1px solid var(--line);padding:10px 0;flex-shrink:0;overflow:auto}
+  .side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:12px 18px 4px}
+  .side a{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:13.5px;color:var(--ink);cursor:pointer;border-left:3px solid transparent}
+  .side a:hover{background:rgba(0,0,0,.04)}
+  .side a.active{background:rgba(46,125,50,.10);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+  .side .ico{width:18px;text-align:center}
+  .main{flex:1;padding:22px 26px;overflow:auto}
+  .crumbs{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .page-h{font-size:22px;margin:0 0 2px;font-weight:700}
+  .page-sub{color:var(--muted);margin:0 0 18px;font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .card .k{font-size:12px;color:var(--muted)}
+  .card .v{font-size:25px;font-weight:700;margin-top:4px}
+  .card .v small{font-size:13px;font-weight:500;color:var(--accent)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:20px}
+  .panel h3{margin:0 0 14px;font-size:15px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+  tr:hover td{background:rgba(0,0,0,.02)}
+  .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .pill.ok{background:#e6f4ea;color:#2e7d32}.pill.wait{background:#fdf3e0;color:#b9770a}.pill.no{background:#fdeceb;color:#c0392b}.pill.info{background:#e7f0fb;color:#1565c0}
+  .btn{display:inline-block;background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600;margin-right:6px}
+  .btn:hover{filter:brightness(1.08)}
+  .btn.alt{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .btn.gold{background:var(--gold);color:#3a2e00}
+  .btn.sm{padding:4px 9px;font-size:12px;margin:0}
+  .btn.danger{background:transparent;color:#c0392b;border:1px solid #e3b4af}
+  .row{display:flex;gap:18px;flex-wrap:wrap}.row>*{flex:1;min-width:280px}
+  .bar{height:10px;border-radius:6px;background:rgba(0,0,0,.06);overflow:hidden;margin-top:6px}
+  .bar>span{display:block;height:100%;background:var(--accent)}
+  .legend{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;margin-top:8px}
+  .note{font-size:12px;color:var(--muted);background:rgba(0,0,0,.03);border:1px dashed var(--line);border-radius:8px;padding:10px 12px}
+  .field{margin-bottom:14px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  .field input,.field select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:7px;font-size:14px;font-family:inherit;background:var(--card);color:var(--ink)}
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .search{flex:1;min-width:220px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)}
+  .watermark{position:fixed;bottom:10px;right:14px;font-size:11px;color:#9aa39a;background:rgba(255,255,255,.75);padding:4px 10px;border-radius:20px;z-index:60}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-right:8px;vertical-align:middle}
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--green),var(--green2))}
+  .login-card{background:#fff;border-radius:14px;padding:28px;width:460px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+  .login-card .crest{width:54px;height:54px;font-size:20px;margin:0 auto 12px}
+  .login-card h2{text-align:center;margin:0 0 2px;font-size:19px;color:#1f2a1f}
+  .login-card p.s{text-align:center;color:#5e6b5e;font-size:13px;margin:0 0 18px}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+  .role{border:1px solid #dfe5df;border-radius:10px;padding:13px;cursor:pointer;text-align:center;transition:.15s;color:#1f2a1f}
+  .role:hover{border-color:var(--green);background:#f3f8f3;transform:translateY(-2px)}
+  .role .ri{font-size:20px}.role .rt{font-weight:600;font-size:13px;margin-top:5px}.role .rd{font-size:11px;color:#5e6b5e;margin-top:2px}
+  .login-theme{display:flex;gap:6px;justify-content:center;margin-top:16px}
+  .swatch{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #ccc}
+  .phone{width:330px;margin:0 auto;border:10px solid #222;border-radius:34px;background:#fff;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.2)}
+  .phone .pscreen{height:600px;overflow:auto}
+  .phone .pbar{background:var(--green);color:#fff;padding:12px 16px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .phone .pbody{padding:16px;color:#1f2a1f}
+  .otp{display:flex;gap:8px;justify-content:center;margin:14px 0}
+  .otp input{width:42px;height:50px;text-align:center;font-size:20px;border:1px solid #dfe5df;border-radius:8px}
+  .voucher{background:linear-gradient(135deg,var(--green2),var(--green));color:#fff;border-radius:12px;padding:16px;margin-bottom:14px}
+  .voucher .vn{font-size:12px;opacity:.85}.voucher .vv{font-size:20px;font-weight:700;letter-spacing:1px}
+  .tabbar{display:flex;border-top:1px solid #dfe5df}.tabbar div{flex:1;text-align:center;padding:10px;font-size:11px;color:#5e6b5e}.tabbar div.on{color:var(--green);font-weight:700}
+  /* modal + toast */
+  .ovl{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+  .mcard{background:var(--card);color:var(--ink);border-radius:12px;padding:22px;width:440px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .mcard h3{margin:0 0 14px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 18px;border-radius:24px;font-size:13px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:.3s}
+  .toast.show{opacity:1;bottom:34px}
+  /* landing */
+  .lnav{display:flex;align-items:center;gap:12px;padding:14px 32px;background:var(--top);color:#fff;position:sticky;top:0;z-index:30}
+  .lnav .spacer{flex:1}
+  .lnav a{font-size:13px;opacity:.9;cursor:pointer;padding:6px 4px}
+  .lnav a:hover{opacity:1}
+  .lhero{background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;padding:64px 32px 72px;text-align:center}
+  .lhero h1{font-size:38px;margin:0 0 12px;max-width:820px;margin-inline:auto;line-height:1.15}
+  .lhero p{font-size:17px;opacity:.92;max-width:660px;margin:0 auto 26px}
+  .lhero .btn{font-size:15px;padding:13px 26px}
+  .lhero .ghost{background:transparent;border:1px solid rgba(255,255,255,.6);color:#fff}
+  .lband{display:flex;justify-content:center;gap:48px;flex-wrap:wrap;background:rgba(0,0,0,.12);padding:18px;color:#fff;font-size:14px}
+  .lband b{font-size:22px;display:block}
+  .lsection{max-width:1040px;margin:0 auto;padding:48px 24px}
+  .lsection h2{text-align:center;font-size:25px;margin:0 0 6px}
+  .lsection .lsub{text-align:center;color:var(--muted);margin:0 0 30px}
+  .lgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+  .lmod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px}
+  .lmod .li{font-size:28px}.lmod h4{margin:10px 0 6px;font-size:16px}.lmod p{margin:0;font-size:13px;color:var(--muted)}
+  .lmod.cur{border:2px solid var(--accent);box-shadow:0 8px 24px rgba(0,0,0,.06)}
+  .ltag{display:inline-block;background:var(--accent);color:#fff;font-size:11px;padding:2px 9px;border-radius:20px;margin-top:10px}
+  .lsteps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:18px}
+  .lstep{text-align:center;padding:10px}
+  .lstep .num{width:42px;height:42px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 10px;font-size:18px}
+  .lfoot{background:#10150f;color:#cdd6cd;padding:30px 32px;font-size:13px;text-align:center}
+  .factgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:14px 0}
+  .fact{background:rgba(0,0,0,.03);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .fact .fk{font-size:11px;color:var(--muted)}.fact .fv{font-weight:600;margin-top:2px}
+  .tl{list-style:none;padding:0;margin:0}
+  .tl li{padding:0 0 14px 22px;border-left:2px solid var(--line);position:relative;margin-left:6px}
+  .tl li:before{content:"";position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+  .tl .tt{font-size:12px;color:var(--muted)}
+  .appfoot{padding:14px 26px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;background:var(--side)}
+</style>
+</head>
+<body>
+
+<!-- ============ LANDING / HOME ============ -->
+<div id="landing">
+  <div class="lnav">
+    <div class="crest">DA</div>
+    <strong>Online Platform for Producer Support</strong>
+    <div class="spacer"></div>
+    <a onclick="document.getElementById('modules').scrollIntoView({behavior:'smooth'})">Modules</a>
+    <a onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">How it works</a>
+    <select class="theme-sel" id="themeSel2" onchange="setTheme(this.value)" title="Change theme"></select>
+    <a class="btn" style="margin:0" onclick="showLogin()">Sign in →</a>
+  </div>
+  <div class="lhero">
+    <h1>Cashless agricultural support that reaches the right producers</h1>
+    <p>The e-Voucher Module lets the Department of Agriculture distribute subsidised inputs to producers through secure digital vouchers — issued by SMS, redeemed at agro-dealers with a one-time PIN, and tracked end-to-end.</p>
+    <button class="btn gold" onclick="showLogin()">Sign in to the platform</button>
+    <button class="btn ghost" onclick="enter('producer')">Try the producer app 📱</button>
+  </div>
+  <div class="lband">
+    <div><b>18 642</b> producers supported</div>
+    <div><b>R 71.4m</b> value distributed</div>
+    <div><b>9</b> provinces</div>
+    <div><b>82%</b> redemption rate</div>
+  </div>
+  <div class="lsection" id="modules">
+    <h2>One platform, four modules</h2>
+    <p class="lsub">The e-Voucher Module is the part being delivered under this project.</p>
+    <div class="lgrid">
+      <div class="lmod"><div class="li">📇</div><h4>Extension Directory</h4><p>Contact details of public &amp; private extension and advisory officers.</p></div>
+      <div class="lmod"><div class="li">👨‍🌾</div><h4>Farmer Register</h4><p>The central register of producers and the support they receive.</p></div>
+      <div class="lmod cur"><div class="li">🎟️</div><h4>e-Voucher Module</h4><p>Issue, redeem and track cashless input vouchers across all levels.</p><span class="ltag">This project</span></div>
+      <div class="lmod"><div class="li">📊</div><h4>Decision Support</h4><p>Weather, production, markets and a GIS interface for advice.</p></div>
+    </div>
+  </div>
+  <div class="lsection" id="how" style="padding-top:0">
+    <h2>How the e-Voucher works</h2>
+    <p class="lsub">From selecting a producer to proof of redemption.</p>
+    <div class="lsteps">
+      <div class="lstep"><div class="num">1</div><b>Select &amp; verify</b><p style="font-size:13px;color:var(--muted)">Government screens producers from the Farmer Register and checks RICA.</p></div>
+      <div class="lstep"><div class="num">2</div><b>Issue voucher</b><p style="font-size:13px;color:var(--muted)">A subsidy package is assigned and a unique voucher is sent by SMS.</p></div>
+      <div class="lstep"><div class="num">3</div><b>Redeem with OTP</b><p style="font-size:13px;color:var(--muted)">The producer redeems inputs at an agro-dealer using a one-time PIN.</p></div>
+      <div class="lstep"><div class="num">4</div><b>Pay &amp; report</b><p style="font-size:13px;color:var(--muted)">Dealers invoice, payments clear, and everything is audited &amp; reported.</p></div>
+    </div>
+    <div style="text-align:center;margin-top:28px"><button class="btn" onclick="showLogin()">Sign in to explore the system →</button></div>
+  </div>
+  <div class="lfoot">Department of Agriculture · Online Platform for Producer Support · e-Voucher Module<br><span style="opacity:.6">Prototype / demonstration only — dummy data</span></div>
+</div>
+
+<!-- ============ LOGIN ============ -->
+<div id="login" class="login-wrap hidden">
+  <div class="login-card">
+    <div class="crest">DA</div>
+    <h2>Online Platform for Producer Support</h2>
+    <p class="s">e-Voucher Module &amp; Mobile Application · Department of Agriculture</p>
+    <div class="field"><label>Username / ID number</label><input value="demo.user" /></div>
+    <div class="field"><label>Password</label><input type="password" value="••••••••" /></div>
+    <p style="font-size:12px;color:#5e6b5e;margin:4px 0 10px">Choose a portal to preview:</p>
+    <div class="roles">
+      <div class="role" onclick="enter('gov')"><div class="ri">🏛️</div><div class="rt">National Superuser</div><div class="rd">Full access, all provinces</div></div>
+      <div class="role" onclick="enter('gov_prov')"><div class="ri">🗺️</div><div class="rt">Provincial Admin</div><div class="rd">Scoped to KwaZulu-Natal</div></div>
+      <div class="role" onclick="enter('dealer')"><div class="ri">🏪</div><div class="rt">Agro-Dealer / Supplier</div><div class="rd">Redemptions &amp; invoices</div></div>
+      <div class="role" onclick="enter('producer')"><div class="ri">📱</div><div class="rt">Producer (Mobile App)</div><div class="rd">Receive &amp; redeem vouchers</div></div>
+    </div>
+    <div class="login-theme" id="loginTheme"></div>
+    <p style="text-align:center;font-size:11px;color:#9aa39a;margin:10px 0 0">↑ tap a colour to change the theme</p>
+  </div>
+</div>
+
+<!-- ============ WEB APP SHELL ============ -->
+<div id="shell" class="hidden">
+  <div class="topbar">
+    <div class="crest">DA</div>
+    <h1>Online Platform for Producer Support<small>e-Voucher Module</small></h1>
+    <div class="spacer"></div>
+    <select class="theme-sel" id="themeSel" onchange="setTheme(this.value)" title="Change theme"></select>
+    <span class="badge" id="roleBadge">National Superuser</span>
+    <div class="user">Demo User<br><small id="roleSub" style="opacity:.8">National</small></div>
+    <span class="badge" style="cursor:pointer" onclick="logout()">Sign out</span>
+  </div>
+  <div class="app"><nav class="side" id="nav"></nav><div class="main" id="view"></div></div>
+  <div class="appfoot">Department of Agriculture · e-Voucher Module · <a style="cursor:pointer;color:var(--accent)" onclick="logout()">Sign out</a> · Prototype — dummy data, nothing is saved</div>
+</div>
+
+<!-- ============ PHONE APP ============ -->
+<div id="phoneApp" class="hidden" style="padding:30px;background:linear-gradient(135deg,var(--green),var(--green2));min-height:100vh">
+  <div style="text-align:center;color:#fff;margin-bottom:16px"><strong>Producer Mobile App — Preview</strong><br>
+    <small style="opacity:.85">Tap through the redemption flow</small>
+    <div style="margin-top:8px"><span class="badge" style="background:rgba(255,255,255,.2);color:#fff;cursor:pointer;padding:5px 12px;border-radius:20px" onclick="logout()">← Back to portal selection</span></div></div>
+  <div class="phone"><div class="pscreen" id="pscreen"></div></div>
+</div>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast"></div>
+<div class="watermark">💾 LIVE DATABASE — your data is saved on this PC</div>
+
+<script>
+/* ================= THEMES ================= */
+const THEMES={
+  agri:{name:"Agriculture Green",swatch:"#2e7d32",vars:{'--green':'#1b5e20','--green2':'#2e7d32','--gold':'#c79a00','--bg':'#f4f6f4','--ink':'#1f2a1f','--muted':'#5e6b5e','--line':'#dfe5df','--card':'#fff','--side':'#fff','--top':'#1b5e20','--topink':'#fff','--accent':'#2e7d32'}},
+  navy:{name:"Government Navy",swatch:"#1565c0",vars:{'--green':'#0d3b66','--green2':'#1565c0','--gold':'#f4a300','--bg':'#f1f4f8','--ink':'#1a2330','--muted':'#5b6675','--line':'#dde3ec','--card':'#fff','--side':'#fff','--top':'#0d3b66','--topink':'#fff','--accent':'#1565c0'}},
+  savanna:{name:"Savanna Earth",swatch:"#a9772f",vars:{'--green':'#5c4326','--green2':'#a9772f','--gold':'#d4a017','--bg':'#f7f3ec','--ink':'#2c241a','--muted':'#7a6e5d','--line':'#e6ddcc','--card':'#fffdf8','--side':'#fffdf8','--top':'#5c4326','--topink':'#fff','--accent':'#a9772f'}},
+  dark:{name:"Dark Mode",swatch:"#26a269",vars:{'--green':'#0f2e16','--green2':'#26a269','--gold':'#e3b341','--bg':'#10151a','--ink':'#e6edf3','--muted':'#9aa7b2','--line':'#2a323c','--card':'#1a2128','--side':'#161c22','--top':'#0f2e16','--topink':'#fff','--accent':'#26a269'}},
+};
+function setTheme(k){const t=THEMES[k]||THEMES.agri;Object.entries(t.vars).forEach(([a,b])=>document.documentElement.style.setProperty(a,b));try{localStorage.setItem('evTheme',k)}catch(e){}['themeSel','themeSel2'].forEach(id=>{const s=$(id);if(s)s.value=k;});}
+function buildThemeUI(){const opts=Object.entries(THEMES).map(([k,t])=>`<option value="${k}">🎨 ${t.name}</option>`).join("");['themeSel','themeSel2'].forEach(id=>{if($(id))$(id).innerHTML=opts;});$('loginTheme').innerHTML=Object.entries(THEMES).map(([k,t])=>`<span class="swatch" style="background:${t.swatch}" title="${t.name}" onclick="setTheme('${k}')"></span>`).join("");}
+
+/* ================= STATE / DATA ================= */
+const PROV={FS:"Free State",KZN:"KwaZulu-Natal",WC:"Western Cape",GP:"Gauteng",MP:"Mpumalanga",NW:"North West",LP:"Limpopo",NC:"Northern Cape",EC:"Eastern Cape"};
+let UID=100, VNO=480;
+const STATE={role:'gov',scope:null,view:'dash',filter:'',
+  producers:[
+    {id:1,name:"Thabo Mokoena",prov:"FS",dist:"Thaba Nchu",ent:"Maize · 4ha",status:"Active",rica:"Verified",demo:"M·41"},
+    {id:2,name:"Nomsa Dlamini",prov:"KZN",dist:"uMzinyathi",ent:"Vegetables · 1.5ha",status:"Active",rica:"Verified",demo:"F·29"},
+    {id:3,name:"Pieter van Wyk",prov:"WC",dist:"Swartland",ent:"Wheat · 12ha",status:"Pending",rica:"Verified",demo:"M·53"},
+    {id:4,name:"Lerato Sithole",prov:"GP",dist:"Tshwane",ent:"Poultry · 800 birds",status:"Active",rica:"Verified",demo:"F·34"},
+    {id:5,name:"Sipho Ndlovu",prov:"MP",dist:"Nkomazi",ent:"Sugarcane · 6ha",status:"Active",rica:"Verified",demo:"M·47"},
+    {id:6,name:"Anna Botha",prov:"NW",dist:"Mahikeng",ent:"Cattle · 40 head",status:"Suspended",rica:"Mismatch",demo:"F·61"},
+    {id:7,name:"Zanele Khumalo",prov:"KZN",dist:"Zululand",ent:"Vegetables · 2ha",status:"Active",rica:"Verified",demo:"F·26"},
+    {id:8,name:"Johannes Maritz",prov:"FS",dist:"Mangaung",ent:"Maize · 9ha",status:"Active",rica:"Verified",demo:"M·58"},
+    {id:9,name:"Dineo Phiri",prov:"LP",dist:"Vhembe",ent:"Tomatoes · 3ha",status:"Active",rica:"Verified",demo:"F·31"},
+    {id:10,name:"Bongani Zulu",prov:"KZN",dist:"King Cetshwayo",ent:"Goats · 60 head",status:"Active",rica:"Verified",demo:"M·44"},
+    {id:11,name:"Maria Adams",prov:"NC",dist:"Frances Baard",ent:"Grapes · 5ha",status:"Pending",rica:"Verified",demo:"F·39"},
+    {id:12,name:"Tshepo Molefe",prov:"NW",dist:"Bojanala",ent:"Sunflower · 15ha",status:"Active",rica:"Verified",demo:"M·36"},
+    {id:13,name:"Fatima Patel",prov:"GP",dist:"Ekurhuleni",ent:"Poultry · 1200 birds",status:"Active",rica:"Verified",demo:"F·48"},
+    {id:14,name:"Andile Mbeki",prov:"EC",dist:"OR Tambo",ent:"Maize · 2.5ha",status:"Active",rica:"Verified",demo:"M·33"},
+    {id:15,name:"Grace Nkosi",prov:"MP",dist:"Ehlanzeni",ent:"Vegetables · 1ha",status:"Active",rica:"Verified",demo:"F·27"},
+  ],
+  vouchers:[
+    {no:"EV-2026-004471",who:"Thabo Mokoena",pkg:"Maize starter pack",val:3200,status:"Redeemed"},
+    {no:"EV-2026-004472",who:"Nomsa Dlamini",pkg:"Vegetable seed + fert.",val:1850,status:"Issued"},
+    {no:"EV-2026-004473",who:"Lerato Sithole",pkg:"Poultry feed pack",val:2400,status:"Issued"},
+    {no:"EV-2026-004474",who:"Pieter van Wyk",pkg:"Wheat fertiliser",val:7600,status:"Pending approval"},
+    {no:"EV-2026-004475",who:"Sipho Ndlovu",pkg:"Cane herbicide pack",val:4100,status:"Redeemed"},
+    {no:"EV-2026-004476",who:"Dineo Phiri",pkg:"Tomato seedling pack",val:2050,status:"Redeemed"},
+    {no:"EV-2026-004477",who:"Tshepo Molefe",pkg:"Sunflower seed + fert.",val:5400,status:"Issued"},
+    {no:"EV-2026-004478",who:"Andile Mbeki",pkg:"Maize starter pack",val:3200,status:"Redeemed"},
+    {no:"EV-2026-004479",who:"Fatima Patel",pkg:"Poultry feed pack",val:2400,status:"Issued"},
+  ],
+  packages:[
+    {name:"Maize starter pack",val:3200,items:"Maize seed 10kg + LAN 50kg",status:"Active"},
+    {name:"Vegetable seed + fertiliser",val:1850,items:"Veg seed kit + fertiliser",status:"Active"},
+    {name:"Poultry feed pack",val:2400,items:"Starter feed 40kg x2",status:"Active"},
+    {name:"Sunflower seed + fertiliser",val:5400,items:"Sunflower seed 5kg + fert.",status:"Active"},
+  ],
+  catalogue:[
+    {n:"Maize seed (10kg)",c:"Seed",p:850,s:"Approved"},{n:"LAN fertiliser (50kg)",c:"Fertiliser",p:620,s:"Approved"},
+    {n:"Vegetable seed kit",c:"Seed",p:430,s:"Approved"},{n:"Poultry starter feed (40kg)",c:"Feed",p:540,s:"Approved"},
+    {n:"Tomato seedlings (tray)",c:"Seedlings",p:180,s:"Approved"},{n:"Sunflower seed (5kg)",c:"Seed",p:720,s:"Approved"},
+    {n:"Knapsack sprayer",c:"Equipment",p:1200,s:"Under review"},{n:"Cattle lick supplement",c:"Feed",p:390,s:"Approved"},
+  ],
+  dealers:[
+    {n:"AgriMart Tshwane",prov:"GP",dist:"Tshwane",c:"D. Naidoo",s:"Active"},{n:"FarmCo Nkomazi",prov:"MP",dist:"Nkomazi",c:"S. Mahlangu",s:"Active"},
+    {n:"KZN Agri Supplies",prov:"KZN",dist:"Zululand",c:"B. Cele",s:"Active"},{n:"Swartland Boere Co-op",prov:"WC",dist:"Swartland",c:"J. du Toit",s:"Active"},
+    {n:"Vhembe Farm Centre",prov:"LP",dist:"Vhembe",c:"R. Netshi",s:"Pending"},{n:"Mangaung Agri Hub",prov:"FS",dist:"Mangaung",c:"T. Modise",s:"Active"},
+  ],
+  users:[
+    {n:"Motshidisi Sitali",r:"National Superuser",lvl:"National",sc:"All provinces",s:"Active"},
+    {n:"Quinton Nyoka",r:"Provincial Admin",lvl:"Provincial",sc:"KwaZulu-Natal",s:"Active"},
+    {n:"Zinhle Mkhize",r:"Provincial Admin",lvl:"Provincial",sc:"Free State",s:"Active"},
+    {n:"James Ngaka",r:"District Officer",lvl:"District",sc:"Vhembe (LP)",s:"Active"},
+    {n:"Mpho Lekganyane",r:"District Officer",lvl:"District",sc:"Tshwane (GP)",s:"Active"},
+    {n:"Tebogo Mothibi",r:"Extension Officer",lvl:"District",sc:"Nkomazi (MP)",s:"Active"},
+    {n:"Ben Coetzer",r:"Finance / Payments",lvl:"National",sc:"Treasury / BAS",s:"Active"},
+    {n:"Sara Williams",r:"Auditor (read-only)",lvl:"National",sc:"All provinces",s:"Active"},
+  ],
+  audit:[
+    {t:"15 May 2026 10:12",a:"Andile Mbeki",e:"Voucher EV-...4478 redeemed at AgriMart Tshwane",k:"OTP verified",c:"ok"},
+    {t:"14 May 2026 09:41",a:"Dineo Phiri",e:"Voucher EV-...4476 redeemed (offline, synced)",k:"OTP verified",c:"ok"},
+    {t:"13 May 2026 15:02",a:"M. Sitali",e:"Subsidy package 'Poultry 2026' approved",k:"Approval",c:"info"},
+    {t:"12 May 2026 08:55",a:"Admin",e:"Anna Botha suspended — RICA name mismatch",k:"Flag",c:"no"},
+  ],
+};
+
+/* ================= HELPERS ================= */
+const $=id=>document.getElementById(id);
+const money=n=>"R "+Number(n).toLocaleString('en-ZA');
+const ini=n=>n.split(" ").map(x=>x[0]).join("").slice(0,2);
+const sCls=s=>({Active:"ok","Approved":"ok",Redeemed:"ok",Verified:"ok",Issued:"info",Pending:"wait","Pending approval":"wait","Under review":"wait",Suspended:"no",Mismatch:"no"}[s]||"info");
+function scopedProducers(){return STATE.scope?STATE.producers.filter(p=>p.prov===STATE.scope):STATE.producers;}
+function provOf(name){const p=STATE.producers.find(x=>x.name===name);return p?p.prov:null;}
+function scopedVouchers(){return STATE.scope?STATE.vouchers.filter(v=>provOf(v.who)===STATE.scope):STATE.vouchers;}
+function flt(arr,fields){const f=STATE.filter.trim().toLowerCase();if(!f)return arr;return arr.filter(o=>fields.some(k=>String(o[k]||"").toLowerCase().includes(f)));}
+function pill(s){return `<span class="pill ${sCls(s)}">${s}</span>`;}
+function card(k,v,extra){return `<div class="card"><div class="k">${k}</div><div class="v">${v} ${extra?`<small>${extra}</small>`:""}</div></div>`}
+function crumb(t){return `<div class="crumbs">Home / ${STATE.scope?PROV[STATE.scope]+" / ":""}${t}</div>`}
+function barChart(items){const max=Math.max(...items.map(i=>i[1]))||1;return items.map(([l,v])=>`<div style="margin-bottom:11px"><div class="legend"><span>${l}</span><span>${v}</span></div><div class="bar"><span style="width:${Math.round(v/max*100)}%"></span></div></div>`).join("");}
+function searchBar(extra){return `<div class="toolbar"><input class="search" placeholder="🔍 Type to filter…" value="${STATE.filter}" oninput="applyFilter(this.value)">${extra||""}</div>`;}
+function applyFilter(v){STATE.filter=v;renderView();const s=document.querySelector('.search');if(s){s.focus();s.value=v;s.setSelectionRange(v.length,v.length);}}
+
+/* ----- toast / modal ----- */
+let toastT;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2600);}
+function modal(title,bodyHtml,okLabel,okFn){
+  $('modalRoot').innerHTML=`<div class="ovl" onclick="if(event.target===this)closeModal()"><div class="mcard"><h3>${title}</h3>${bodyHtml}<div style="margin-top:16px;text-align:right"><button class="btn alt" onclick="closeModal()">Cancel</button><button class="btn" id="modalOk">${okLabel}</button></div></div></div>`;
+  $('modalOk').onclick=okFn;
+}
+function closeModal(){$('modalRoot').innerHTML='';}
+
+/* ----- real file downloads ----- */
+function dl(filename,content,mime){const b=new Blob([content],{type:mime});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+function ascii(s){return String(s).replace(/[–—]/g,'-').replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/[^\x20-\x7E]/g,'');}
+function makePdf(title,lines){
+  let stream="BT\n/F1 16 Tf\n50 790 Td\n("+pe(title)+") Tj\n/F1 10 Tf\n0 -10 Td\n";
+  lines.forEach(l=>{stream+="0 -16 Td ("+pe(ascii(l))+") Tj\n";});
+  stream+="ET";
+  const objs={1:"<</Type/Catalog/Pages 2 0 R>>",2:"<</Type/Pages/Kids[3 0 R]/Count 1>>",
+    3:"<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>",
+    4:"<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",5:"<</Length "+stream.length+">>\nstream\n"+stream+"\nendstream"};
+  let pdf="%PDF-1.4\n";const off={};
+  for(let i=1;i<=5;i++){off[i]=pdf.length;pdf+=i+" 0 obj\n"+objs[i]+"\nendobj\n";}
+  const xs=pdf.length;pdf+="xref\n0 6\n0000000000 65535 f \n";
+  for(let i=1;i<=5;i++)pdf+=String(off[i]).padStart(10,'0')+" 00000 n \n";
+  pdf+="trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n"+xs+"\n%%EOF";
+  return pdf;
+}
+function pe(s){return String(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');}
+function exportPdf(title,lines){dl(title.replace(/[^a-z0-9]+/gi,'_')+'.pdf',makePdf(title,['Department of Agriculture — e-Voucher Module','Generated: 14 May 2026  (PROTOTYPE / dummy data)','',...lines]),'application/pdf');toast('📄 PDF downloaded');}
+function exportCsv(name,headers,rows){const csv=[headers.join(','),...rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(','))].join('\n');dl(name+'.csv',csv,'text/csv');toast('📊 Excel/CSV downloaded');}
+
+/* ================= ACTIONS (make it real) ================= */
+function openAddBeneficiary(){
+  const opts=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${STATE.scope===k?'selected':''}>${v}</option>`).join("");
+  modal("Add beneficiary",`
+    <div class="field"><label>Full name</label><input id="b_name" placeholder="e.g. Sibusiso Khoza"></div>
+    <div class="row"><div class="field"><label>Province</label><select id="b_prov">${opts}</select></div>
+    <div class="field"><label>District</label><input id="b_dist" placeholder="District"></div></div>
+    <div class="field"><label>Enterprise</label><input id="b_ent" placeholder="e.g. Maize · 3ha"></div>
+    <div class="row"><div class="field"><label>Gender·Age</label><input id="b_demo" placeholder="e.g. M·38"></div>
+    <div class="field"><label>RICA status</label><select id="b_rica"><option>Verified</option><option>Mismatch</option></select></div></div>
+    <div class="note">In the real system, RICA status is checked automatically against the cellphone number (ToR 4.14).</div>`,
+    "Add beneficiary",async()=>{
+      const name=$('b_name').value.trim();if(!name){toast('Enter a name');return;}
+      await api('/producers','POST',{name,prov:$('b_prov').value,dist:$('b_dist').value,ent:$('b_ent').value,rica:$('b_rica').value,demo:$('b_demo').value});
+      closeModal();await reload();toast('✅ Saved to database: '+name);
+    });
+}
+async function removeBeneficiary(id){const p=STATE.producers.find(x=>x.id===id);if(!p)return;if(confirm('Remove beneficiary "'+p.name+'"? This deletes it from the database.')){await api('/producers/'+id,'DELETE');await reload();toast('🗑 Removed: '+p.name);}}
+async function toggleSuspend(id){const p=STATE.producers.find(x=>x.id===id);if(!p)return;const r=await api('/producers/'+id+'/suspend','POST');await reload();toast((r.status==='Suspended'?'⏸ Suspended ':'▶ Reactivated ')+p.name);}
+async function issueVoucher(){
+  const who=$('v_prod').value, pkn=$('v_pkg').value;
+  const r=await api('/vouchers','POST',{who,pkg:pkn});
+  if(r.error){toast(r.error);return;}
+  await reload();toast('🎟️ '+r.no+' issued — SMS sent (OTP '+r.otp+')');
+}
+function openAddPackage(){
+  modal("Create subsidy package",`
+    <div class="field"><label>Package name</label><input id="p_name" placeholder="e.g. Goat starter pack"></div>
+    <div class="field"><label>Included inputs</label><input id="p_items" placeholder="e.g. 4 goats + feed"></div>
+    <div class="field"><label>Value (R)</label><input id="p_val" type="number" placeholder="e.g. 3500"></div>`,
+    "Create package",async()=>{const n=$('p_name').value.trim();if(!n){toast('Enter a name');return;}
+      await api('/packages','POST',{name:n,val:$('p_val').value,items:$('p_items').value});closeModal();await reload();toast('📦 Package created: '+n);});
+}
+async function removePackage(name){const pk=STATE.packages.find(p=>p.name===name);if(pk&&confirm('Remove package "'+name+'"?')){await api('/packages/'+pk.id,'DELETE');await reload();toast('🗑 Package removed');}}
+function openAddInput(){
+  modal("Add catalogue input",`
+    <div class="field"><label>Input name</label><input id="i_n" placeholder="e.g. Drip irrigation kit"></div>
+    <div class="row"><div class="field"><label>Category</label><select id="i_c"><option>Seed</option><option>Fertiliser</option><option>Feed</option><option>Seedlings</option><option>Equipment</option></select></div>
+    <div class="field"><label>Unit price (R)</label><input id="i_p" type="number" placeholder="e.g. 950"></div></div>`,
+    "Add input",async()=>{const n=$('i_n').value.trim();if(!n){toast('Enter a name');return;}
+      await api('/catalogue','POST',{n,c:$('i_c').value,p:$('i_p').value});closeModal();await reload();toast('📦 Input added: '+n);});
+}
+async function removeInput(n){const it=STATE.catalogue.find(i=>i.n===n);if(it&&confirm('Remove input "'+n+'"?')){await api('/catalogue/'+it.id,'DELETE');await reload();toast('🗑 Input removed');}}
+function openAddUser(){
+  const opts=Object.values(PROV).map(p=>`<option>${p}</option>`).join("");
+  modal("Add system user",`
+    <div class="field"><label>Full name</label><input id="u_n" placeholder="Full name"></div>
+    <div class="row"><div class="field"><label>Role</label><select id="u_r"><option>National Superuser</option><option>Provincial Admin</option><option>District Officer</option><option>Extension Officer</option><option>Auditor (read-only)</option></select></div>
+    <div class="field"><label>Scope</label><select id="u_s"><option>All provinces</option>${opts}</select></div></div>`,
+    "Add user",async()=>{const n=$('u_n').value.trim();if(!n){toast('Enter a name');return;}
+      await api('/users','POST',{name:n,role:LABEL2TOKEN[$('u_r').value]||'district',scope:$('u_s').value});closeModal();await reload();toast('👤 User added: '+n);});
+}
+async function removeUser(n){const u=STATE.users.find(x=>x.n===n);if(u&&confirm('Remove user "'+n+'"?')){await api('/users/'+u.id,'DELETE');await reload();toast('🗑 User removed');}}
+
+/* ================= NAV ================= */
+const NAV={
+  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"]]},
+  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["mande","📈","Monitoring & Evaluation"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"]]},
+  dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redeem","✅","Redeemed Inputs"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
+  fin:{label:"Financial Institution",sub:"Clearing Officer",items:[["fdash","📊","Dashboard"],["clearing","🏦","Deposit Clearing"],["fpay","💳","Payments"]]},
+};
+
+/* ================= VIEWS ================= */
+const VIEWS={
+  dash:()=>{const P=scopedProducers(),V=scopedVouchers();const val=V.reduce((s,v)=>s+v.val,0);const red=V.filter(v=>v.status==='Redeemed').length;
+    const provCounts=Object.keys(PROV).map(k=>[PROV[k],STATE.producers.filter(p=>p.prov===k).length]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+    return `${crumb("Dashboard")}<h2 class="page-h">${STATE.scope?PROV[STATE.scope]+" Dashboard":"National Dashboard"}</h2>
+    <p class="page-sub">${STATE.scope?"Producer support in "+PROV[STATE.scope]:"Producer support across all nine provinces"} · 2026 season · <b>live demo data</b></p>
+    <div class="cards">${card("Producers supported",P.length,"")}${card("Vouchers issued",V.length,"")}${card("Vouchers redeemed",red,V.length?Math.round(red/V.length*100)+"%":"")}${card("Value distributed",money(val),"")}</div>
+    <div class="row"><div class="panel"><h3>${STATE.scope?"Producers by status":"Producers by province"}</h3>${barChart(STATE.scope?[["Active",P.filter(p=>p.status==='Active').length],["Pending",P.filter(p=>p.status==='Pending').length],["Suspended",P.filter(p=>p.status==='Suspended').length]]:provCounts)}</div>
+      <div class="panel"><h3>Vouchers by status</h3>${barChart([["Redeemed",V.filter(v=>v.status==='Redeemed').length],["Issued",V.filter(v=>v.status==='Issued').length],["Pending",V.filter(v=>v.status.startsWith('Pending')).length]])}</div></div>
+    <div class="panel"><h3>Recent vouchers</h3>${voucherTable(V.slice(0,6))}</div>`;},
+
+  mande:()=>{const P=scopedProducers();const f=P.filter(p=>p.demo[0]==='F').length,m=P.length-f;const youth=P.filter(p=>+p.demo.split('·')[1]<=35).length;
+    return `${crumb("Monitoring & Evaluation")}<h2 class="page-h">Monitoring &amp; Evaluation</h2>
+    <p class="page-sub">Disaggregated reporting · figures update live as beneficiaries change</p>
+    <div class="cards">${card("Female producers",f,P.length?Math.round(f/P.length*100)+"%":"")}${card("Male producers",m,"")}${card("Youth (≤35)",youth,"")}${card("Total in scope",P.length,"")}</div>
+    <div class="row"><div class="panel"><h3>By gender</h3>${barChart([["Female",f],["Male",m]])}</div><div class="panel"><h3>By age group</h3>${barChart([["18–35 (Youth)",youth],["36+",P.length-youth]])}</div></div>
+    <button class="btn" onclick='exportPdf("M&E Summary Report",buildMandeLines())'>⬇ Export report (PDF)</button>
+    <button class="btn alt" onclick='exportMandeCsv()'>⬇ Export data (Excel)</button>`;},
+
+  benef:()=>{const list=flt(scopedProducers(),['name','dist','ent','demo']);
+    return `${crumb("Beneficiaries")}<h2 class="page-h">Beneficiaries — Farmer Register</h2>
+    <p class="page-sub">${list.length} shown${STATE.scope?" in "+PROV[STATE.scope]:""} · RICA-verified · <b>add / remove works</b></p>
+    ${searchBar(`<button class="btn" onclick="openAddBeneficiary()">+ Add beneficiary</button><button class="btn alt" onclick='exportPdf("Beneficiary List",buildBenefLines())'>⬇ PDF</button>`)}
+    <div class="panel"><table><thead><tr><th>Producer</th><th>Province</th><th>District</th><th>Enterprise</th><th>Status</th><th>RICA</th><th>Actions</th></tr></thead><tbody>
+    ${list.map(p=>`<tr><td><span class="avatar">${ini(p.name)}</span><a style="cursor:pointer;color:var(--accent);font-weight:600" onclick="openProfile(${p.id})">${p.name}</a> <span style="color:var(--muted);font-size:11px">(${p.demo})</span></td><td>${PROV[p.prov]}</td><td>${p.dist}</td><td>${p.ent}</td><td>${pill(p.status)}</td><td>${pill(p.rica)}</td>
+      <td style="white-space:nowrap"><button class="btn sm alt" onclick="toggleSuspend(${p.id})">${p.status==='Suspended'?'Reactivate':'Suspend'}</button> <button class="btn sm danger" onclick="removeBeneficiary(${p.id})">🗑</button></td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">No matches.</td></tr>`}
+    </tbody></table></div>
+    <div class="note">RICA verification confirms the cellphone is registered in the producer's own name before any voucher is issued (ToR 4.14).</div>`;},
+
+  profile:()=>{const p=STATE.producers.find(x=>x.id===STATE.selected);
+    if(!p)return `<button class="btn alt" onclick="go('benef')">← Back</button><p>Producer not found.</p>`;
+    const vs=STATE.vouchers.filter(v=>v.who===p.name);const total=vs.reduce((s,v)=>s+v.val,0);
+    return `${crumb("Beneficiaries / "+p.name)}
+    <button class="btn alt" onclick="go('benef')">← Back to register</button>
+    <div class="panel" style="margin-top:14px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+      <span class="avatar" style="width:60px;height:60px;font-size:22px">${ini(p.name)}</span>
+      <div style="flex:1;min-width:200px"><h2 class="page-h" style="margin:0">${p.name}</h2>
+        <div style="color:var(--muted);font-size:13px;margin-top:2px">${p.ent} · ${PROV[p.prov]} (${p.dist})</div>
+        <div style="margin-top:8px">${pill(p.status)} ${pill(p.rica==='Verified'?'Verified':'Mismatch')} <span class="pill info">${p.demo}</span></div></div>
+      <div style="text-align:right"><button class="btn sm alt" onclick="toggleSuspend(${p.id})">${p.status==='Suspended'?'Reactivate':'Suspend'}</button>
+        <button class="btn sm danger" onclick="removeBeneficiary(${p.id})">🗑 Remove</button></div>
+    </div>
+    <div class="factgrid">
+      <div class="fact"><div class="fk">Vouchers received</div><div class="fv">${vs.length}</div></div>
+      <div class="fact"><div class="fk">Total value</div><div class="fv">${money(total)}</div></div>
+      <div class="fact"><div class="fk">Redeemed</div><div class="fv">${vs.filter(v=>v.status==='Redeemed').length}</div></div>
+      <div class="fact"><div class="fk">RICA status</div><div class="fv">${p.rica}</div></div>
+    </div>
+    <div class="row">
+      <div class="panel"><h3>Vouchers</h3>${vs.length?voucherTable(vs):`<p style="color:var(--muted);font-size:13px">No vouchers yet. Issue one from the Voucher Issuance page.</p>`}</div>
+      <div class="panel"><h3>Activity timeline</h3><ul class="tl">
+        ${vs.map(v=>`<li><div class="tt">2026</div>Voucher ${v.no} — ${v.pkg} (${money(v.val)}) · ${v.status}</li>`).join("")}
+        <li><div class="tt">On registration</div>Screened from Farmer Register · RICA ${p.rica}</li>
+      </ul></div>
+    </div>`;},
+
+  packages:()=>`${crumb("Subsidy Packages")}<h2 class="page-h">Subsidy Packages — Setup</h2>
+    <p class="page-sub">Superusers configure the support packages that can be assigned to producers (ToR 4.11)</p>
+    ${searchBar(`<button class="btn" onclick="openAddPackage()">+ Create package</button>`)}
+    <div class="panel"><table><thead><tr><th>Package</th><th>Included inputs</th><th>Value</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${flt(STATE.packages,['name','items']).map(p=>`<tr><td><b>${p.name}</b></td><td>${p.items}</td><td>${money(p.val)}</td><td>${pill(p.status)}</td><td><button class="btn sm danger" onclick="removePackage('${p.name.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join("")}
+    </tbody></table></div>`,
+
+  vouchers:()=>{const V=scopedVouchers();const actives=scopedProducers().filter(p=>p.status==='Active');
+    return `${crumb("Voucher Issuance")}<h2 class="page-h">Voucher Issuance</h2>
+    <p class="page-sub">Issue a voucher and watch it appear in the register and dashboard</p>
+    <div class="row"><div class="panel"><h3>Issue a new voucher</h3>
+      <div class="field"><label>Producer</label><select id="v_prod">${actives.map(p=>`<option>${p.name}</option>`).join("")}</select></div>
+      <div class="field"><label>Subsidy package</label><select id="v_pkg">${STATE.packages.map(p=>`<option>${p.name}</option>`).join("")}</select></div>
+      <div class="field"><label>Programme</label><select><option>Comprehensive Producer Development Support</option><option>Ilima/Letsema</option></select></div>
+      <button class="btn gold" onclick="issueVoucher()">Issue voucher &amp; send SMS →</button>
+      <p class="note" style="margin-top:12px">On issue, the system generates a unique voucher number, SMSes the producer, and logs it to the audit trail.</p></div>
+      <div class="panel"><h3>Voucher register (${V.length})</h3>${voucherTable(V)}</div></div>`;},
+
+  cat:()=>`${crumb("Input Catalogue")}<h2 class="page-h">Input Catalogue Management</h2>
+    <p class="page-sub">Only approved inputs can be redeemed (ToR 4.4)</p>
+    ${searchBar(`<button class="btn" onclick="openAddInput()">+ Add input</button>`)}
+    <div class="panel"><table><thead><tr><th>Input</th><th>Category</th><th>Unit price</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${flt(STATE.catalogue,['n','c']).map(i=>`<tr><td>${i.n}</td><td>${i.c}</td><td>${money(i.p)}</td><td>${pill(i.s)}</td><td><button class="btn sm danger" onclick="removeInput('${i.n.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join("")}
+    </tbody></table></div>`,
+
+  suppliers:()=>`${crumb("Suppliers Directory")}<h2 class="page-h">Suppliers &amp; Agro-Dealers</h2>
+    <p class="page-sub">${STATE.dealers.length} registered outlets</p>
+    ${searchBar(`<button class="btn" onclick="toast('Prototype: dealer self-registration is part of the supplier portal (ToR 4.7)')">+ Register dealer</button>`)}
+    <div class="panel">${plain(['Dealer / Supplier','Province','District','Contact','Status'],flt(STATE.dealers,['n','dist','c']).map(d=>[d.n,PROV[d.prov],d.dist,d.c,pill(d.s)]))}</div>`,
+
+  users:()=>`${crumb("Users & Access")}<h2 class="page-h">Users &amp; Access Management</h2>
+    <p class="page-sub">Role-based access across national / provincial / district levels (ToR 4.1)</p>
+    ${searchBar(`<button class="btn" onclick="openAddUser()">+ Add user</button>`)}
+    <div class="panel"><h3>System users (${STATE.users.length})</h3><table><thead><tr><th>Name</th><th>Role</th><th>Level</th><th>Scope</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${flt(STATE.users,['n','r','sc']).map(u=>`<tr><td><span class="avatar">${ini(u.n)}</span>${u.n}</td><td>${u.r}</td><td>${u.lvl}</td><td>${u.sc}</td><td>${pill(u.s)}</td><td><button class="btn sm danger" onclick="removeUser('${u.n.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="panel"><h3>Role permissions matrix</h3>${plain(['Permission','National','Provincial','District','Producer'],[['Issue / approve vouchers','✔ All','✔ Province','✘','—'],['View beneficiaries','✔ All','✔ Province','✔ District','Own only'],['Manage input catalogue','✔','✘','✘','—'],['Approve payments','✔','✘','✘','—'],['Run M&E reports','✔ All','✔ Province','✔ District','—'],['Manage users','✔','Province only','✘','—']])}
+    <p class="note" style="margin-top:12px">Try the <b>Provincial Admin</b> login — it sees only KwaZulu-Natal data and fewer menus.</p></div>`,
+
+  reports:()=>`${crumb("Reports & Export")}<h2 class="page-h">Reports &amp; Export Centre</h2>
+    <p class="page-sub">Buttons download real files (ToR 4.13)</p>
+    <div class="row"><div class="panel"><h3>Standard reports</h3>
+      ${[["Producers supported by province","prov"],["Vouchers issued vs redeemed","vou"],["Beneficiary list","ben"],["M&E disaggregation","mande"]].map(([r,k])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)"><span style="font-size:13px">📄 ${r}</span><span><button class="btn alt sm" onclick="stdPdf('${k}','${r}')">PDF</button> <button class="btn alt sm" onclick="stdCsv('${k}')">Excel</button></span></div>`).join("")}
+    </div><div class="panel"><h3>Ad-hoc report</h3>
+      <div class="field"><label>Report on</label><select id="r_on"><option>Vouchers</option><option>Beneficiaries</option></select></div>
+      <div class="field"><label>Group by</label><select><option>Province</option><option>Status</option><option>Gender</option></select></div>
+      <div class="field"><label>Format</label><select id="r_fmt"><option>PDF</option><option>Excel (CSV)</option></select></div>
+      <button class="btn" onclick="adhoc()">⚙ Generate &amp; download</button></div></div>`,
+
+  audit:()=>`${crumb("Audit Trail")}<h2 class="page-h">Audit Trail</h2><p class="page-sub">Tamper-evident record of every transaction (ToR 4.10)</p>
+    <div class="panel">${plain(['Timestamp','Actor','Event','Type'],STATE.audit.map(a=>[a.t,a.a,a.e,`<span class="pill ${a.c}">${a.k}</span>`]))}</div>`,
+
+  griev:()=>`${crumb("Grievances")}<h2 class="page-h">Grievance Redressal</h2><p class="page-sub">Log and resolve producer queries — saved in the database (ToR 4.12)</p>
+    ${searchBar(`<button class="btn" onclick="openAddGrievance()">+ Log grievance</button>`)}
+    <div class="panel"><table><thead><tr><th>Ref</th><th>Producer</th><th>Issue</th><th>Status</th><th></th></tr></thead><tbody>
+    ${flt(STATE.grievances,['ref','who','issue']).map(g=>`<tr><td>${g.ref}</td><td>${g.who}</td><td>${g.issue}</td><td>${pill(g.status)}</td><td>${g.status!=='Resolved'?`<button class="btn sm alt" onclick="resolveGrievance(${g.id})">Resolve</button>`:''}</td></tr>`).join("")||`<tr><td colspan="5" style="color:var(--muted)">No grievances logged.</td></tr>`}
+    </tbody></table></div>`,
+
+  coverage:()=>{
+    const cov=[
+      ["4.1","Role-based access & dedicated portals","Shown","ok","4 portals, Users & Access, role matrix, provincial scoping"],
+      ["4.2","Integration to Farmer Register / DSS / Directory","Concept","wait","Referenced on home page & screens; real link is a build task"],
+      ["4.3","Beneficiary selection & subsidy approval","Shown","ok","Beneficiaries register, packages, FI deposit clearing"],
+      ["4.4","Input catalogue management","Shown","ok","Catalogue add/remove, approved vs under review"],
+      ["4.5","Entitlement management","Partial","wait","Covered via Subsidy Packages + voucher issuance"],
+      ["4.6","Communication — SMS voucher & advisory","Simulated","wait","'SMS sent' confirmation + phone advisory message"],
+      ["4.7","Supplier / agro-dealer portal","Shown","ok","Dealer dashboard, redemptions, invoices"],
+      ["4.8","Payments processing + bank/BAS integration","Partial","wait","FI clearing & payment approval shown; BAS referenced"],
+      ["4.9","Online/offline redemption + OTP","Shown","ok","Mobile OTP flow + offline sync note"],
+      ["4.10","Audit trail","Shown","ok","Full audit log screen"],
+      ["4.11","Monitoring & evaluation (disaggregated)","Shown","ok","Gender/youth/age dashboards + package setup"],
+      ["4.12","Grievance redressal","Shown","ok","Grievances tracking screen"],
+      ["4.13","Reporting / BI / export CSV·Excel·PDF","Shown","ok","Reports centre with real file downloads"],
+      ["4.14","RICA verification of producers","Simulated","wait","Status shown & mismatch flagged"],
+    ];
+    const shown=cov.filter(c=>c[2]==='Shown').length;
+    const build=[
+      ["Mandated technology (Java/C#, SQL Server/Oracle, Xamarin)","Build phase"],
+      ["Real integrations (Farmer Register, DSS, BAS, payment gateway)","Build phase"],
+      ["Security & compliance (PCI-DSS, PASA registration)","Build phase"],
+      ["Real RICA / SMS / OTP services + offline sync engine","Build phase"],
+      ["Real database, user accounts, hosting, deployment, training, maintenance","Build phase"],
+    ];
+    return `${crumb("Requirements Coverage")}<h2 class="page-h">Requirements Coverage</h2>
+    <p class="page-sub">How this prototype maps to the Terms of Reference (Table 1, capabilities 4.1–4.14)</p>
+    <div class="cards">${card("Capabilities represented","14 / 14","")}${card("Fully demonstrated",shown,"")}${card("Simulated / partial",14-shown,"")}${card("Production build items",build.length,"")}</div>
+    <div class="panel"><h3>The 14 system capabilities</h3>
+      <table><thead><tr><th>#</th><th>Capability</th><th>In prototype</th><th>Where / note</th></tr></thead><tbody>
+      ${cov.map(c=>`<tr><td>${c[0]}</td><td>${c[1]}</td><td><span class="pill ${c[3]}">${c[2]}</span></td><td style="color:var(--muted)">${c[4]}</td></tr>`).join("")}
+      </tbody></table></div>
+    <div class="panel"><h3>Delivered in the 12-month build (not in this prototype)</h3>
+      <table><thead><tr><th>Production item</th><th>Status</th></tr></thead><tbody>
+      ${build.map(b=>`<tr><td>${b[0]}</td><td><span class="pill info">${b[1]}</span></td></tr>`).join("")}
+      </tbody></table>
+      <p class="note" style="margin-top:12px">This prototype is a front-end demonstration that proves understanding of every requirement. The production system is built on the Department's mandated stack during the 12-month project.</p>
+      <button class="btn" style="margin-top:12px" onclick='exportPdf("Requirements Coverage",["THE 14 CAPABILITIES (ToR Table 1):",${JSON.stringify(cov.map(c=>c[0]+" "+c[1]+"  ->  "+c[2])).slice(1,-1)},"","BUILD-PHASE ITEMS (not in prototype):",${JSON.stringify(build.map(b=>"- "+b[0])).slice(1,-1)}])'>⬇ Export coverage (PDF)</button>
+    </div>`;},
+
+  links:()=>{
+    const node=(t,d,diff)=>{const col={g:'#2e7d32',a:'#b9770a',r:'#c0392b'}[diff];return `<div style="border:2px solid ${col};border-radius:10px;padding:12px;background:var(--card);text-align:center"><div style="font-weight:700;font-size:13px">${t}</div><div style="font-size:11px;color:var(--muted);margin-top:3px">${d}</div></div>`;};
+    return `${crumb("System Links")}<h2 class="page-h">System Links — Integration Map</h2>
+    <p class="page-sub">The e-Voucher connects to 8 external systems · colour shows difficulty</p>
+    <div style="display:flex;gap:10px;margin-bottom:16px;font-size:12px;flex-wrap:wrap"><span class="pill ok">🟢 Easy</span><span class="pill wait">🟡 Medium — needs DOA access</span><span class="pill no">🔴 Hard — needs outside permission</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;max-width:780px">
+      ${node('SMS gateway','OTP · voucher · advisory','g')}${node('Payment gateway','online payments','g')}${node('Extension Directory','officer contacts','a')}
+      ${node('Farmer Register','central producer list','a')}<div style="border:3px solid var(--accent);border-radius:12px;padding:16px;background:var(--accent);color:#fff;text-align:center;display:flex;flex-direction:column;justify-content:center"><div style="font-weight:800;font-size:14px">e-VOUCHER MODULE</div><div style="font-size:11px;opacity:.9;margin-top:3px">web + mobile + database</div></div>${node('Decision Support System','weather · markets · GIS','a')}
+      ${node('Banks / financial inst.','clearing · settlement','r')}${node('RICA verification','number ↔ producer','r')}${node('BAS mainframe','govt pays dealers','r')}
+    </div>
+    <p class="note" style="margin-top:18px;max-width:780px">Internal plumbing (built by the service provider): mobile app ⇄ backend API ⇄ SQL Server / Oracle database. The three red links are hard because of institutional / legal access, not coding.</p>
+    <button class="btn" style="margin-top:8px" onclick='exportPdf("System Links",["8 EXTERNAL LINKS (easiest to hardest):","","1. SMS gateway ............. Easy","2. Payment gateway ......... Easy","3. Extension Directory ..... Medium (DOA access)","4. Farmer Register ......... Medium (DOA access)","5. Decision Support System . Medium (DOA access)","6. Banks / financial inst. . Hard","7. RICA verification ....... Hard","8. BAS mainframe ........... Hardest","","Internal: mobile app <-> backend API <-> database"])'>⬇ Export links (PDF)</button>`;},
+
+  /* dealer / fin */
+  ddash:()=>`${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">AgriMart Tshwane — Dashboard</h2><p class="page-sub">Redemptions and invoicing</p>
+    <div class="cards">${card("Redemptions this month","38","")}${card("Value redeemed","R 96 200","")}${card("Invoices outstanding","R 7 300","1 pending")}${card("Paid to date","R 142 800","")}</div>
+    <div class="panel"><h3>Recent redemptions</h3>${plain(['Voucher No.','Producer','Package','Value','Date','Status'],[['EV-2026-004471','Thabo Mokoena','Maize starter pack','R 3 200','12 May',pill('Redeemed')],['EV-2026-004478','Andile Mbeki','Maize starter pack','R 3 200','15 May',pill('Redeemed')]])}</div>`,
+  redeem:()=>`${crumb("Redeemed Inputs")}<h2 class="page-h">Redeemed Inputs</h2><div class="panel">${plain(['Voucher No.','Producer','Package','Value','Date','Status'],[['EV-2026-004471','Thabo Mokoena','Maize starter pack','R 3 200','12 May',pill('Redeemed')],['EV-2026-004476','Dineo Phiri','Tomato seedling pack','R 2 050','14 May',pill('Redeemed')]])}</div>`,
+  inv:()=>`${crumb("Invoices")}<h2 class="page-h">Invoices</h2><button class="btn" style="margin-bottom:14px" onclick="toast('Prototype: invoice generated from redeemed vouchers')">+ Generate invoice</button>
+    <div class="panel">${plain(['Invoice','Date','Amount','Linked to','Status'],[['INV-0098','13 May','R 7 300','2 vouchers',pill('Pending')],['INV-0097','30 Apr','R 18 450','6 vouchers',pill('Approved').replace('Approved','Paid')]])}</div>`,
+  dcat:()=>`${crumb("Approved Inputs")}<h2 class="page-h">Approved Inputs</h2><div class="panel">${plain(['Input','Category','Price','Status'],STATE.catalogue.map(i=>[i.n,i.c,money(i.p),pill(i.s)]))}</div>`,
+  fdash:()=>`${crumb("FI Dashboard")}<h2 class="page-h">Clearing &amp; Payments</h2><div class="cards">${card("Deposits to clear","12","R 9 400")}${card("Cleared today","48","")}${card("Payments queued","7","R 31 600")}${card("Settled this month","R 142 800","")}</div>
+    <div class="panel"><h3>Pending deposit clearing</h3>${plain(['Producer','Reference','Amount','Status'],[['Pieter van Wyk','DEP-7741','R 500',pill('Pending')],['Maria Adams','DEP-7742','R 400',pill('Pending')]])}</div>`,
+  clearing:()=>`${crumb("Deposit Clearing")}<h2 class="page-h">Deposit Clearing</h2><div class="panel">${plain(['Producer','Reference','Amount','Status'],[['Pieter van Wyk','DEP-7741','R 500',pill('Pending')],['Thabo Mokoena','DEP-7740','R 300',pill('Active').replace('Active','Cleared')]])}</div>`,
+  fpay:()=>`${crumb("Payments")}<h2 class="page-h">Agro-Dealer Payments</h2><div class="panel">${plain(['Invoice','Dealer','Amount','Status'],[['INV-0098','AgriMart Tshwane','R 7 300',pill('Pending')],['INV-0097','AgriMart Tshwane','R 18 450',pill('Approved').replace('Approved','Paid')]])}</div>`,
+};
+function plain(head,rows){return `<table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>"<tr>"+r.map(c=>`<td>${c}</td>`).join("")+"</tr>").join("")}</tbody></table>`;}
+function voucherTable(V){return `<table><thead><tr><th>Voucher No.</th><th>Producer</th><th>Package</th><th>Value</th><th>Status</th></tr></thead><tbody>${V.map(v=>`<tr><td>${v.no}</td><td>${v.who}</td><td>${v.pkg}</td><td>${money(v.val)}</td><td>${pill(v.status)}</td></tr>`).join("")}</tbody></table>`;}
+
+/* ----- export builders ----- */
+function buildBenefLines(){return scopedProducers().map((p,i)=>`${i+1}. ${p.name}  |  ${PROV[p.prov]}  |  ${p.ent}  |  ${p.status}  |  RICA: ${p.rica}`);}
+function buildMandeLines(){const P=scopedProducers();const f=P.filter(p=>p.demo[0]==='F').length;const youth=P.filter(p=>+p.demo.split('·')[1]<=35).length;return [`Total producers in scope: ${P.length}`,`Female: ${f}    Male: ${P.length-f}`,`Youth (<=35): ${youth}`,`Provinces covered: ${[...new Set(P.map(p=>PROV[p.prov]))].join(', ')}`];}
+function exportMandeCsv(){exportCsv('MandE_data',['Name','Province','Enterprise','Gender-Age','Status'],scopedProducers().map(p=>[p.name,PROV[p.prov],p.ent,p.demo,p.status]));}
+function stdPdf(k,title){const m={prov:()=>Object.keys(PROV).map(c=>`${PROV[c]}: ${STATE.producers.filter(p=>p.prov===c).length} producers`),vou:()=>STATE.vouchers.map(v=>`${v.no}  ${v.who}  ${v.pkg}  ${money(v.val)}  ${v.status}`),ben:buildBenefLines,mande:buildMandeLines};exportPdf(title,(m[k]||(()=>['No data']))());}
+function stdCsv(k){if(k==='ben')exportCsv('beneficiaries',['Name','Province','District','Enterprise','Status','RICA'],STATE.producers.map(p=>[p.name,PROV[p.prov],p.dist,p.ent,p.status,p.rica]));else if(k==='vou')exportCsv('vouchers',['No','Producer','Package','Value','Status'],STATE.vouchers.map(v=>[v.no,v.who,v.pkg,v.val,v.status]));else if(k==='prov')exportCsv('by_province',['Province','Producers'],Object.keys(PROV).map(c=>[PROV[c],STATE.producers.filter(p=>p.prov===c).length]));else exportMandeCsv();}
+function adhoc(){const on=$('r_on').value,fmt=$('r_fmt').value;if(fmt[0]==='P')exportPdf(on+' report',(on==='Vouchers'?STATE.vouchers.map(v=>`${v.no}  ${v.who}  ${money(v.val)}  ${v.status}`):buildBenefLines()));else (on==='Vouchers'?stdCsv('vou'):stdCsv('ben'));}
+
+/* ================= CONTROL ================= */
+/* ============ LIVE DATA LAYER (talks to the real database server) ============ */
+const api=(url,method,b)=>fetch('/api'+url,{method:method||'GET',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined}).then(r=>r.json());
+const ROLE_LABEL={national:"National Superuser",provincial:"Provincial Admin",district:"District Officer",extension:"Extension Officer",finance:"Finance / Payments",auditor:"Auditor (read-only)",dealer:"Agro-Dealer"};
+const ROLE_LEVEL={national:"National",provincial:"Provincial",district:"District",extension:"District",finance:"National",auditor:"National",dealer:"Dealer"};
+const LABEL2TOKEN={"National Superuser":"national","Provincial Admin":"provincial","District Officer":"district","Extension Officer":"extension","Auditor (read-only)":"auditor"};
+async function loadAll(){
+  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit]=await Promise.all([
+    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit')]);
+  STATE.producers=producers;
+  STATE.vouchers=vouchers;
+  STATE.packages=packages;
+  STATE.catalogue=catalogue;
+  STATE.dealers=dealers.map(d=>({id:d.id,n:d.name,prov:d.prov,dist:d.dist,c:d.contact,s:d.status}));
+  STATE.users=users.map(u=>({id:u.id,n:u.name,r:ROLE_LABEL[u.role]||u.role,lvl:ROLE_LEVEL[u.role]||'—',sc:u.scope||'All provinces',s:'Active'}));
+  STATE.grievances=grievances;
+  STATE.audit=audit.map(a=>({t:a.ts,a:a.actor,e:a.event,k:a.kind,c:a.kind}));
+}
+async function reload(){ await loadAll(); renderView(); }
+function openAddGrievance(){modal("Log grievance",`<div class="field"><label>Producer</label><input id="g_who" placeholder="Producer name"></div><div class="field"><label>Issue</label><input id="g_issue" placeholder="Describe the problem"></div>`,"Save",async()=>{const issue=$('g_issue').value.trim();if(!issue){toast('Describe the issue');return;}const r=await api('/grievances','POST',{who:$('g_who').value,issue});closeModal();await reload();toast('📣 Logged: '+r.ref);});}
+async function resolveGrievance(id){await api('/grievances/'+id+'/resolve','POST');await reload();toast('✔ Resolved');}
+
+/* ================= CONTROL ================= */
+async function enter(r){
+  $("landing").classList.add("hidden");
+  if(r==='producer'){$("login").classList.add("hidden");$("phoneApp").classList.remove("hidden");phoneStep(0);return;}
+  STATE.role=r;STATE.scope=(r==='gov_prov')?'KZN':null;STATE.filter='';
+  $("login").classList.add("hidden");$("shell").classList.remove("hidden");
+  const cfg=NAV[r];$("roleBadge").textContent=cfg.label;$("roleSub").textContent=cfg.sub;
+  $("nav").innerHTML=`<div class="grp">Menu</div>`+cfg.items.map((it,i)=>`<a class="${i===0?'active':''}" onclick="go('${it[0]}',this)"><span class="ico">${it[1]}</span>${it[2]}</a>`).join("");
+  $("view").innerHTML='<p style="color:var(--muted)">Loading from database…</p>';
+  await loadAll();
+  STATE.view=cfg.items[0][0];renderView();
+}
+function go(v,el){STATE.view=v;STATE.filter='';if(el){document.querySelectorAll('.side a').forEach(a=>a.classList.remove('active'));el.classList.add('active');}renderView();}
+function renderView(){$("view").innerHTML=(VIEWS[STATE.view]||(()=>"<p>Coming soon</p>"))();$("view").scrollTop=0;}
+function showLogin(){$("landing").classList.add("hidden");$("login").classList.remove("hidden");}
+function openProfile(id){STATE.selected=id;STATE.view='profile';renderView();}
+function logout(){["shell","phoneApp","login"].forEach(i=>$(i).classList.add("hidden"));$("landing").classList.remove("hidden");}
+
+/* ================= PHONE ================= */
+const phoneSteps=[
+  `<div class="pbar">📱 My Vouchers</div><div class="pbody"><div class="voucher"><div class="vn">Active voucher</div><div class="vv">EV-2026-004472</div><div style="margin-top:6px;font-size:13px">Vegetable seed + fertiliser · <b>R 1 850</b></div></div><p style="font-size:13px;color:#5e6b5e">Take this voucher to a participating agro-dealer to redeem your inputs.</p><button class="btn" style="width:100%" onclick="phoneStep(1)">Redeem now →</button><p style="font-size:12px;color:#5e6b5e;margin-top:14px">📨 Advisory: ☀️ Dry spell expected in uMzinyathi next week — delay transplanting.</p></div><div class="tabbar"><div class="on">🎟️ Vouchers</div><div>📨 Messages</div><div>👤 Profile</div></div>`,
+  `<div class="pbar">✅ Redeem Voucher</div><div class="pbody"><div class="field"><label>Agro-dealer</label><select><option>AgriMart Tshwane</option><option>KZN Agri Supplies</option></select></div><div class="field"><label>Inputs (approved catalogue)</label><select><option>Vegetable seed kit — R430</option><option>LAN fertiliser (50kg) — R620</option></select></div><div class="note" style="margin-bottom:14px">An OTP will be sent to your RICA-registered number to confirm it's really you.</div><button class="btn" style="width:100%" onclick="phoneStep(2)">Send OTP →</button><button class="btn alt" style="width:100%;margin-top:8px" onclick="phoneStep(0)">Cancel</button></div>`,
+  `<div class="pbar">🔐 Enter OTP</div><div class="pbody"><p style="font-size:13px;color:#5e6b5e">We sent a 4-digit code to •••• 4821</p><div class="otp"><input value="4"><input value="9"><input value="0"><input value="2"></div><p style="font-size:12px;color:#5e6b5e;text-align:center">Works offline too — syncs once back online.</p><button class="btn" style="width:100%" onclick="phoneStep(3)">Confirm redemption →</button></div>`,
+  `<div class="pbar">🎉 Redeemed</div><div class="pbody" style="text-align:center"><div style="font-size:54px;margin:10px 0">✅</div><h3 style="margin:0">Redemption successful</h3><p style="font-size:13px;color:#5e6b5e">Voucher <b>EV-2026-004472</b> redeemed at <b>AgriMart Tshwane</b> for <b>R 1 850</b>.</p><div class="voucher" style="text-align:left"><div class="vn">Proof of redemption</div><div class="vv" style="font-size:14px">REF: RDM-2026-88143</div><div style="font-size:12px;margin-top:4px">14 May 2026 · OTP verified</div></div><button class="btn" style="width:100%" onclick="phoneStep(0)">Back to my vouchers</button></div>`
+];
+function phoneStep(i){$("pscreen").innerHTML=phoneSteps[i];}
+
+/* ================= INIT ================= */
+buildThemeUI();let sv='agri';try{sv=localStorage.getItem('evTheme')||'agri'}catch(e){}setTheme(sv);
+</script>
+</body>
+</html>
