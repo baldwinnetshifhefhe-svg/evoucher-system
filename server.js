@@ -13,13 +13,14 @@ const db = new DatabaseSync(DB_PATH);
 
 // ---- tables ---------------------------------------------------------------
 db.exec(`
-CREATE TABLE IF NOT EXISTS producers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,status TEXT DEFAULT 'Active',rica TEXT DEFAULT 'Verified',demo TEXT);
+CREATE TABLE IF NOT EXISTS producers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,status TEXT DEFAULT 'Active',rica TEXT DEFAULT 'Verified',demo TEXT,email TEXT);
 CREATE TABLE IF NOT EXISTS packages(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,val INTEGER,items TEXT,status TEXT DEFAULT 'Active');
 CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,who TEXT,prov TEXT,pkg TEXT,val INTEGER,status TEXT,otp TEXT,dealer TEXT,created TEXT,redeemed_at TEXT);
 CREATE TABLE IF NOT EXISTS dealers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,contact TEXT,status TEXT DEFAULT 'Active');
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE,password TEXT,name TEXT,role TEXT,scope TEXT);
 CREATE TABLE IF NOT EXISTS grievances(id INTEGER PRIMARY KEY AUTOINCREMENT,ref TEXT,who TEXT,issue TEXT,status TEXT DEFAULT 'Open',created TEXT);
 CREATE TABLE IF NOT EXISTS catalogue(id INTEGER PRIMARY KEY AUTOINCREMENT,n TEXT,c TEXT,p INTEGER,s TEXT DEFAULT 'Approved');
+CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,audience TEXT,channel TEXT,subject TEXT,body TEXT,recipients INTEGER);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,actor TEXT,event TEXT,kind TEXT);
 `);
 
@@ -41,6 +42,7 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
    ["Bongani Zulu","KZN","King Cetshwayo","Goats · 60 head","Active","Verified","M·44"],
    ["Andile Mbeki","EC","OR Tambo","Maize · 2.5ha","Active","Verified","M·33"],
   ].forEach(r=>ip.run(...r));
+  db.prepare("UPDATE producers SET email = lower(replace(name,' ','.'))||'@example.co.za' WHERE email IS NULL").run();
 
   const ipk=db.prepare('INSERT INTO packages(name,val,items,status) VALUES(?,?,?,?)');
   [["Maize starter pack",3200,"Maize seed 10kg + LAN 50kg","Active"],
@@ -90,6 +92,14 @@ const body=req=>new Promise(r=>{let d='';req.on('data',c=>d+=c);req.on('end',()=
 const nextVoucherNo=()=> "EV-2026-00"+(480+db.prepare('SELECT COUNT(*) c FROM vouchers').get().c+1);
 const otp4=()=> String(Math.floor(1000+Math.random()*9000));
 const provOf=name=>{const r=db.prepare('SELECT prov FROM producers WHERE name=?').get(name);return r?r.prov:'';};
+function matchProducers(q){           // criteria-based selection (women, youth, area) — NOT by individual
+  let sql='SELECT * FROM producers WHERE status=\'Active\''; const a=[];
+  if(q.gender==='F') sql+=" AND demo LIKE 'F%'"; else if(q.gender==='M') sql+=" AND demo LIKE 'M%'";
+  if(q.youth) sql+=" AND CAST(substr(demo,instr(demo,'·')+1) AS INT)<=35";
+  if(q.prov){ sql+=' AND prov=?'; a.push(q.prov); }
+  if(q.dist){ sql+=' AND dist=?'; a.push(q.dist); }
+  return db.prepare(sql).all(...a);
+}
 
 // ---- server ---------------------------------------------------------------
 const server=http.createServer(async(req,res)=>{
@@ -128,7 +138,8 @@ const server=http.createServer(async(req,res)=>{
       }
       if(p==='/api/producers' && m==='POST'){
         const b=await body(req); if(!b.name)return json(res,400,{error:'name required'});
-        const info=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo) VALUES(?,?,?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.ent||'—','Active',b.rica||'Verified',b.demo||'—');
+        const email=b.email||(b.name.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/ +/g,'.')+'@example.co.za');
+        const info=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email) VALUES(?,?,?,?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.ent||'—','Active',b.rica||'Verified',b.demo||'—',email);
         logAudit(b.actor||'Admin',`Beneficiary added: ${b.name}`,'info');
         return json(res,200,db.prepare('SELECT * FROM producers WHERE id=?').get(info.lastInsertRowid));
       }
@@ -181,6 +192,26 @@ const server=http.createServer(async(req,res)=>{
       if(p==='/api/catalogue' && m==='GET') return json(res,200,db.prepare('SELECT * FROM catalogue ORDER BY id').all());
       if(p==='/api/catalogue' && m==='POST'){const b=await body(req);if(!b.n)return json(res,400,{error:'name required'});db.prepare('INSERT INTO catalogue(n,c,p,s) VALUES(?,?,?,?)').run(b.n,b.c||'—',+b.p||0,'Under review');logAudit('Admin',`Input added: ${b.n}`,'info');return json(res,200,{ok:true});}
       mm=p.match(/^\/api\/catalogue\/(\d+)$/); if(mm && m==='DELETE'){db.prepare('DELETE FROM catalogue WHERE id=?').run(+mm[1]);return json(res,200,{ok:true});}
+
+      // ---- targeted auto-distribution (issue a package to everyone matching the criteria) ----
+      if(p==='/api/distribute' && m==='POST'){
+        const b=await body(req); const pk=db.prepare('SELECT * FROM packages WHERE name=?').get(b.pkg);
+        if(!pk) return json(res,400,{error:'package required'});
+        const list=matchProducers(b); let n=0;
+        const iv=db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at) VALUES(?,?,?,?,?,?,?,?,?,?)');
+        for(const pr of list){ iv.run(nextVoucherNo(), pr.name, pr.prov, pk.name, pk.val, 'Issued', otp4(), '', today(), ''); n++; }
+        logAudit('Admin',`Auto-distributed '${pk.name}' to ${n} beneficiaries by criteria`,'info');
+        return json(res,200,{count:n});
+      }
+
+      // ---- communications: email/SMS to a group of beneficiaries ----
+      if(p==='/api/messages' && m==='GET') return json(res,200,db.prepare('SELECT * FROM messages ORDER BY id DESC LIMIT 50').all());
+      if(p==='/api/messages' && m==='POST'){
+        const b=await body(req); const recips=matchProducers(b).length;
+        db.prepare('INSERT INTO messages(ts,audience,channel,subject,body,recipients) VALUES(?,?,?,?,?,?)').run(now(),b.audience||'All',b.channel||'Email',b.subject||'',b.body||'',recips);
+        logAudit('Admin',`${b.channel||'Email'} sent to ${recips} beneficiaries: "${b.subject||''}"`,'info');
+        return json(res,200,{count:recips});
+      }
 
       // ---- users (list/add/remove for the Users & Access screen) ----
       if(p==='/api/users' && m==='GET') return json(res,200,db.prepare('SELECT id,username,name,role,scope FROM users ORDER BY id').all());

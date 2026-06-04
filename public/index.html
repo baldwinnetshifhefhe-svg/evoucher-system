@@ -181,6 +181,7 @@
     <div class="roles">
       <div class="role" onclick="enter('gov')"><div class="ri">🏛️</div><div class="rt">National Superuser</div><div class="rd">Full access, all provinces</div></div>
       <div class="role" onclick="enter('gov_prov')"><div class="ri">🗺️</div><div class="rt">Provincial Admin</div><div class="rd">Scoped to KwaZulu-Natal</div></div>
+      <div class="role" onclick="enter('gov_dist')"><div class="ri">📍</div><div class="rt">District Officer</div><div class="rd">Scoped to uMzinyathi (KZN)</div></div>
       <div class="role" onclick="enter('dealer')"><div class="ri">🏪</div><div class="rt">Agro-Dealer / Supplier</div><div class="rd">Redemptions &amp; invoices</div></div>
       <div class="role" onclick="enter('producer')"><div class="ri">📱</div><div class="rt">Producer (Mobile App)</div><div class="rd">Receive &amp; redeem vouchers</div></div>
     </div>
@@ -299,13 +300,16 @@ const $=id=>document.getElementById(id);
 const money=n=>"R "+Number(n).toLocaleString('en-ZA');
 const ini=n=>n.split(" ").map(x=>x[0]).join("").slice(0,2);
 const sCls=s=>({Active:"ok","Approved":"ok",Redeemed:"ok",Verified:"ok",Issued:"info",Pending:"wait","Pending approval":"wait","Under review":"wait",Suspended:"no",Mismatch:"no"}[s]||"info");
-function scopedProducers(){return STATE.scope?STATE.producers.filter(p=>p.prov===STATE.scope):STATE.producers;}
+function scopedProducers(){if(STATE.scopeKind==='prov')return STATE.producers.filter(p=>p.prov===STATE.scope);if(STATE.scopeKind==='dist')return STATE.producers.filter(p=>p.dist===STATE.scope);return STATE.producers;}
+function scopeLabel(){return STATE.scopeKind==='dist'?STATE.scope+" District":STATE.scopeKind==='prov'?PROV[STATE.scope]:"";}
+function sortProducers(list){const s=STATE.sort||'name';const a=[...list];if(s==='name')a.sort((x,y)=>x.name.localeCompare(y.name));else if(s==='name_desc')a.sort((x,y)=>y.name.localeCompare(x.name));else if(s==='prov')a.sort((x,y)=>(PROV[x.prov]||'').localeCompare(PROV[y.prov]||''));else if(s==='status')a.sort((x,y)=>x.status.localeCompare(y.status));return a;}
+function matchClient(q){return STATE.producers.filter(p=>p.status==='Active'&&(!q.gender||p.demo[0]===q.gender)&&(!q.youth||(+p.demo.split('·')[1]<=35))&&(!q.prov||p.prov===q.prov)&&(!q.dist||p.dist===q.dist));}
 function provOf(name){const p=STATE.producers.find(x=>x.name===name);return p?p.prov:null;}
-function scopedVouchers(){return STATE.scope?STATE.vouchers.filter(v=>provOf(v.who)===STATE.scope):STATE.vouchers;}
+function scopedVouchers(){if(!STATE.scopeKind)return STATE.vouchers;const names=new Set(scopedProducers().map(p=>p.name));return STATE.vouchers.filter(v=>names.has(v.who));}
 function flt(arr,fields){const f=STATE.filter.trim().toLowerCase();if(!f)return arr;return arr.filter(o=>fields.some(k=>String(o[k]||"").toLowerCase().includes(f)));}
 function pill(s){return `<span class="pill ${sCls(s)}">${s}</span>`;}
 function card(k,v,extra){return `<div class="card"><div class="k">${k}</div><div class="v">${v} ${extra?`<small>${extra}</small>`:""}</div></div>`}
-function crumb(t){return `<div class="crumbs">Home / ${STATE.scope?PROV[STATE.scope]+" / ":""}${t}</div>`}
+function crumb(t){return `<div class="crumbs">Home / ${scopeLabel()?scopeLabel()+" / ":""}${t}</div>`}
 function barChart(items){const max=Math.max(...items.map(i=>i[1]))||1;return items.map(([l,v])=>`<div style="margin-bottom:11px"><div class="legend"><span>${l}</span><span>${v}</span></div><div class="bar"><span style="width:${Math.round(v/max*100)}%"></span></div></div>`).join("");}
 function searchBar(extra){return `<div class="toolbar"><input class="search" placeholder="🔍 Type to filter…" value="${STATE.filter}" oninput="applyFilter(this.value)">${extra||""}</div>`;}
 function applyFilter(v){STATE.filter=v;renderView();const s=document.querySelector('.search');if(s){s.focus();s.value=v;s.setSelectionRange(v.length,v.length);}}
@@ -396,8 +400,9 @@ async function removeUser(n){const u=STATE.users.find(x=>x.n===n);if(u&&confirm(
 
 /* ================= NAV ================= */
 const NAV={
-  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"]]},
-  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["mande","📈","Monitoring & Evaluation"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"]]},
+  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"]]},
+  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"]]},
+  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["griev","📣","Grievances"]]},
   dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redeem","✅","Redeemed Inputs"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
   fin:{label:"Financial Institution",sub:"Clearing Officer",items:[["fdash","📊","Dashboard"],["clearing","🏦","Deposit Clearing"],["fpay","💳","Payments"]]},
 };
@@ -406,8 +411,8 @@ const NAV={
 const VIEWS={
   dash:()=>{const P=scopedProducers(),V=scopedVouchers();const val=V.reduce((s,v)=>s+v.val,0);const red=V.filter(v=>v.status==='Redeemed').length;
     const provCounts=Object.keys(PROV).map(k=>[PROV[k],STATE.producers.filter(p=>p.prov===k).length]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-    return `${crumb("Dashboard")}<h2 class="page-h">${STATE.scope?PROV[STATE.scope]+" Dashboard":"National Dashboard"}</h2>
-    <p class="page-sub">${STATE.scope?"Producer support in "+PROV[STATE.scope]:"Producer support across all nine provinces"} · 2026 season · <b>live demo data</b></p>
+    return `${crumb("Dashboard")}<h2 class="page-h">${scopeLabel()?scopeLabel()+" Dashboard":"National Dashboard"}</h2>
+    <p class="page-sub">${scopeLabel()?"Producer support in "+scopeLabel():"Producer support across all nine provinces"} · 2026 season · <b>live database</b></p>
     <div class="cards">${card("Producers supported",P.length,"")}${card("Vouchers issued",V.length,"")}${card("Vouchers redeemed",red,V.length?Math.round(red/V.length*100)+"%":"")}${card("Value distributed",money(val),"")}</div>
     <div class="row"><div class="panel"><h3>${STATE.scope?"Producers by status":"Producers by province"}</h3>${barChart(STATE.scope?[["Active",P.filter(p=>p.status==='Active').length],["Pending",P.filter(p=>p.status==='Pending').length],["Suspended",P.filter(p=>p.status==='Suspended').length]]:provCounts)}</div>
       <div class="panel"><h3>Vouchers by status</h3>${barChart([["Redeemed",V.filter(v=>v.status==='Redeemed').length],["Issued",V.filter(v=>v.status==='Issued').length],["Pending",V.filter(v=>v.status.startsWith('Pending')).length]])}</div></div>
@@ -421,12 +426,13 @@ const VIEWS={
     <button class="btn" onclick='exportPdf("M&E Summary Report",buildMandeLines())'>⬇ Export report (PDF)</button>
     <button class="btn alt" onclick='exportMandeCsv()'>⬇ Export data (Excel)</button>`;},
 
-  benef:()=>{const list=flt(scopedProducers(),['name','dist','ent','demo']);
+  benef:()=>{const list=sortProducers(flt(scopedProducers(),['name','dist','ent','demo','email']));
+    const sortSel=`<select onchange="STATE.sort=this.value;renderView()" style="padding:8px;border:1px solid var(--line);border-radius:7px"><option value="name"${(STATE.sort||'name')==='name'?' selected':''}>Sort: Name A–Z</option><option value="name_desc"${STATE.sort==='name_desc'?' selected':''}>Name Z–A</option><option value="prov"${STATE.sort==='prov'?' selected':''}>Province</option><option value="status"${STATE.sort==='status'?' selected':''}>Status</option></select>`;
     return `${crumb("Beneficiaries")}<h2 class="page-h">Beneficiaries — Farmer Register</h2>
-    <p class="page-sub">${list.length} shown${STATE.scope?" in "+PROV[STATE.scope]:""} · RICA-verified · <b>add / remove works</b></p>
-    ${searchBar(`<button class="btn" onclick="openAddBeneficiary()">+ Add beneficiary</button><button class="btn alt" onclick='exportPdf("Beneficiary List",buildBenefLines())'>⬇ PDF</button>`)}
+    <p class="page-sub">${list.length} shown${scopeLabel()?" in "+scopeLabel():""} · RICA-verified · saved in the database</p>
+    ${searchBar(`${sortSel}<button class="btn" onclick="openAddBeneficiary()">+ Add beneficiary</button><button class="btn alt" onclick='exportPdf("Beneficiary List",buildBenefLines())'>⬇ PDF</button><button class="btn alt" onclick='exportCsv("beneficiaries",["Name","Province","District","Enterprise","Status","RICA","Email"],scopedProducers().map(p=>[p.name,PROV[p.prov]||p.prov,p.dist,p.ent,p.status,p.rica,p.email||""]))'>⬇ Excel</button>`)}
     <div class="panel"><table><thead><tr><th>Producer</th><th>Province</th><th>District</th><th>Enterprise</th><th>Status</th><th>RICA</th><th>Actions</th></tr></thead><tbody>
-    ${list.map(p=>`<tr><td><span class="avatar">${ini(p.name)}</span><a style="cursor:pointer;color:var(--accent);font-weight:600" onclick="openProfile(${p.id})">${p.name}</a> <span style="color:var(--muted);font-size:11px">(${p.demo})</span></td><td>${PROV[p.prov]}</td><td>${p.dist}</td><td>${p.ent}</td><td>${pill(p.status)}</td><td>${pill(p.rica)}</td>
+    ${list.map(p=>`<tr><td><span class="avatar">${ini(p.name)}</span><a style="cursor:pointer;color:var(--accent);font-weight:600" onclick="openProfile(${p.id})">${p.name}</a> <span style="color:var(--muted);font-size:11px">(${p.demo})</span><br><span style="color:var(--muted);font-size:11px">${p.email||''}</span></td><td>${PROV[p.prov]}</td><td>${p.dist}</td><td>${p.ent}</td><td>${pill(p.status)}</td><td>${pill(p.rica)}</td>
       <td style="white-space:nowrap"><button class="btn sm alt" onclick="toggleSuspend(${p.id})">${p.status==='Suspended'?'Reactivate':'Suspend'}</button> <button class="btn sm danger" onclick="removeBeneficiary(${p.id})">🗑</button></td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">No matches.</td></tr>`}
     </tbody></table></div>
     <div class="note">RICA verification confirms the cellphone is registered in the producer's own name before any voucher is issued (ToR 4.14).</div>`;},
@@ -569,6 +575,43 @@ const VIEWS={
     <p class="note" style="margin-top:18px;max-width:780px">Internal plumbing (built by the service provider): mobile app ⇄ backend API ⇄ SQL Server / Oracle database. The three red links are hard because of institutional / legal access, not coding.</p>
     <button class="btn" style="margin-top:8px" onclick='exportPdf("System Links",["8 EXTERNAL LINKS (easiest to hardest):","","1. SMS gateway ............. Easy","2. Payment gateway ......... Easy","3. Extension Directory ..... Medium (DOA access)","4. Farmer Register ......... Medium (DOA access)","5. Decision Support System . Medium (DOA access)","6. Banks / financial inst. . Hard","7. RICA verification ....... Hard","8. BAS mainframe ........... Hardest","","Internal: mobile app <-> backend API <-> database"])'>⬇ Export links (PDF)</button>`;},
 
+  distribute:()=>{
+    const initCrit={prov:STATE.scopeKind==='prov'?STATE.scope:'',dist:STATE.scopeKind==='dist'?STATE.scope:''};
+    const init=matchClient(initCrit);
+    const provOpts=Object.entries(PROV).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+    return `${crumb("Targeted Distribution")}<h2 class="page-h">Targeted Distribution</h2>
+    <p class="page-sub">Select beneficiaries by criteria (e.g. women, youth) — not by individual — and issue inputs to all of them automatically</p>
+    <div class="row">
+      <div class="panel"><h3>1. Choose who qualifies</h3>
+        <div class="field"><label>Gender</label><select id="t_gender" onchange="previewDist()"><option value="">Anyone</option><option value="F">Women only</option><option value="M">Men only</option></select></div>
+        <div class="field"><label><input type="checkbox" id="t_youth" onchange="previewDist()" style="width:auto;margin-right:6px">Youth only (35 or younger)</label></div>
+        ${STATE.scopeKind?`<div class="note">Scope: ${scopeLabel()} (locked to your access level)</div>`:`<div class="field"><label>Province</label><select id="t_prov" onchange="previewDist()"><option value="">All provinces</option>${provOpts}</select></div>`}
+        <div class="field" style="margin-top:12px"><label>2. Input package to distribute</label><select id="t_pkg">${STATE.packages.map(p=>`<option value="${p.name}">${p.name} — ${money(p.val)}</option>`).join("")}</select></div>
+        <div id="distPreview" class="note"><b>${init.length}</b> beneficiaries currently match.</div>
+        <button class="btn gold" style="margin-top:12px" onclick="distributeNow()">🎯 Distribute to all matching →</button>
+        <p class="note" style="margin-top:10px">Each matching beneficiary is issued a voucher automatically and notified — no need to pick people one by one.</p>
+      </div>
+      <div class="panel"><h3>Matching beneficiaries</h3><div id="distList">${plain(['Name','Province','District','Gender·Age'],init.slice(0,50).map(p=>[p.name,PROV[p.prov]||p.prov,p.dist,p.demo]))}</div></div>
+    </div>`;
+  },
+
+  comms:()=>{
+    const aud0={prov:STATE.scopeKind==='prov'?STATE.scope:'',dist:STATE.scopeKind==='dist'?STATE.scope:''};
+    return `${crumb("Communications")}<h2 class="page-h">Communications</h2>
+    <p class="page-sub">Email or SMS a group of beneficiaries by criteria — kept in a log (ToR 4.6)</p>
+    <div class="row">
+      <div class="panel"><h3>New message</h3>
+        <div class="field"><label>Send to</label><select id="c_aud" onchange="previewComms()"><option value="all">All beneficiaries</option><option value="F">Women</option><option value="youth">Youth (≤35)</option>${STATE.scopeKind?'':'<optgroup label="Province">'+Object.entries(PROV).map(([k,v])=>`<option value="prov:${k}">${v}</option>`).join('')+'</optgroup>'}</select></div>
+        <div class="field"><label>Channel</label><select id="c_chan"><option>Email</option><option>SMS</option></select></div>
+        <div class="field"><label>Subject</label><input id="c_subj" placeholder="e.g. Your voucher is ready"></div>
+        <div class="field"><label>Message</label><input id="c_body" placeholder="Type your message to beneficiaries"></div>
+        <div id="commsPreview" class="note"><b>${matchClient(aud0).length}</b> recipients.</div>
+        <button class="btn" style="margin-top:12px" onclick="sendComms()">✉️ Send →</button>
+      </div>
+      <div class="panel"><h3>Sent messages (${(STATE.messages||[]).length})</h3>${plain(['When','To','Channel','Subject','Recipients'],(STATE.messages||[]).map(m=>[m.ts,m.audience,m.channel,m.subject,m.recipients]))}</div>
+    </div>`;
+  },
+
   /* dealer / fin */
   ddash:()=>`${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">AgriMart Tshwane — Dashboard</h2><p class="page-sub">Redemptions and invoicing</p>
     <div class="cards">${card("Redemptions this month","38","")}${card("Value redeemed","R 96 200","")}${card("Invoices outstanding","R 7 300","1 pending")}${card("Paid to date","R 142 800","")}</div>
@@ -600,8 +643,8 @@ const ROLE_LABEL={national:"National Superuser",provincial:"Provincial Admin",di
 const ROLE_LEVEL={national:"National",provincial:"Provincial",district:"District",extension:"District",finance:"National",auditor:"National",dealer:"Dealer"};
 const LABEL2TOKEN={"National Superuser":"national","Provincial Admin":"provincial","District Officer":"district","Extension Officer":"extension","Auditor (read-only)":"auditor"};
 async function loadAll(){
-  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit]=await Promise.all([
-    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit')]);
+  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit,messages]=await Promise.all([
+    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit'),api('/messages')]);
   STATE.producers=producers;
   STATE.vouchers=vouchers;
   STATE.packages=packages;
@@ -610,16 +653,28 @@ async function loadAll(){
   STATE.users=users.map(u=>({id:u.id,n:u.name,r:ROLE_LABEL[u.role]||u.role,lvl:ROLE_LEVEL[u.role]||'—',sc:u.scope||'All provinces',s:'Active'}));
   STATE.grievances=grievances;
   STATE.audit=audit.map(a=>({t:a.ts,a:a.actor,e:a.event,k:a.kind,c:a.kind}));
+  STATE.messages=messages;
 }
 async function reload(){ await loadAll(); renderView(); }
 function openAddGrievance(){modal("Log grievance",`<div class="field"><label>Producer</label><input id="g_who" placeholder="Producer name"></div><div class="field"><label>Issue</label><input id="g_issue" placeholder="Describe the problem"></div>`,"Save",async()=>{const issue=$('g_issue').value.trim();if(!issue){toast('Describe the issue');return;}const r=await api('/grievances','POST',{who:$('g_who').value,issue});closeModal();await reload();toast('📣 Logged: '+r.ref);});}
 async function resolveGrievance(id){await api('/grievances/'+id+'/resolve','POST');await reload();toast('✔ Resolved');}
+/* ---- targeted distribution + communications ---- */
+function val(id){const e=document.getElementById(id);return e?e.value:'';}
+function distCrit(){return {gender:val('t_gender'),youth:document.getElementById('t_youth')&&document.getElementById('t_youth').checked,prov:val('t_prov')||(STATE.scopeKind==='prov'?STATE.scope:''),dist:STATE.scopeKind==='dist'?STATE.scope:''};}
+function previewDist(){const list=matchClient(distCrit());const pv=document.getElementById('distPreview');if(pv)pv.innerHTML=`<b>${list.length}</b> beneficiaries match — each will receive the selected package.`;const dl=document.getElementById('distList');if(dl)dl.innerHTML=list.length?plain(['Name','Province','District','Gender·Age'],list.slice(0,50).map(p=>[p.name,PROV[p.prov]||p.prov,p.dist,p.demo])):'<span style="color:var(--muted)">No matches.</span>';}
+async function distributeNow(){const q=distCrit();q.pkg=val('t_pkg');const n=matchClient(q).length;if(!n)return toast('No beneficiaries match those criteria');if(!confirm('Issue "'+q.pkg+'" to '+n+' beneficiaries automatically?'))return;const r=await api('/distribute','POST',q);await reload();toast('🎯 Distributed to '+r.count+' beneficiaries — vouchers issued & logged');}
+function audCrit(){const a=val('c_aud');const q={};if(a==='F')q.gender='F';else if(a==='youth')q.youth=true;else if(a&&a.indexOf('prov:')===0)q.prov=a.slice(5);if(STATE.scopeKind==='prov')q.prov=STATE.scope;if(STATE.scopeKind==='dist')q.dist=STATE.scope;return q;}
+function previewComms(){const n=matchClient(audCrit()).length;const pv=document.getElementById('commsPreview');if(pv)pv.innerHTML=`<b>${n}</b> recipients.`;}
+async function sendComms(){const q=audCrit();q.channel=val('c_chan');q.subject=val('c_subj');q.body=val('c_body');const sel=document.getElementById('c_aud');q.audience=sel?sel.selectedOptions[0].text:'All';const n=matchClient(q).length;if(!n)return toast('No recipients match');if(!q.subject)return toast('Enter a subject');const r=await api('/messages','POST',q);await reload();toast('✉️ '+r.count+' '+q.channel+'(s) sent to beneficiaries');}
 
 /* ================= CONTROL ================= */
 async function enter(r){
   $("landing").classList.add("hidden");
   if(r==='producer'){$("login").classList.add("hidden");$("phoneApp").classList.remove("hidden");phoneStep(0);return;}
-  STATE.role=r;STATE.scope=(r==='gov_prov')?'KZN':null;STATE.filter='';
+  STATE.role=r;STATE.filter='';
+  if(r==='gov_prov'){STATE.scopeKind='prov';STATE.scope='KZN';}
+  else if(r==='gov_dist'){STATE.scopeKind='dist';STATE.scope='uMzinyathi';}
+  else {STATE.scopeKind=null;STATE.scope=null;}
   $("login").classList.add("hidden");$("shell").classList.remove("hidden");
   const cfg=NAV[r];$("roleBadge").textContent=cfg.label;$("roleSub").textContent=cfg.sub;
   $("nav").innerHTML=`<div class="grp">Menu</div>`+cfg.items.map((it,i)=>`<a class="${i===0?'active':''}" onclick="go('${it[0]}',this)"><span class="ico">${it[1]}</span>${it[2]}</a>`).join("");
