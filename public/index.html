@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>e-Voucher Module — Prototype | Department of Agriculture</title>
+<title>e-PSS — e-Producer Support System | Department of Agriculture</title>
 <style>
   :root{--green:#1b5e20;--green2:#2e7d32;--gold:#c79a00;--bg:#f4f6f4;--ink:#1f2a1f;--muted:#5e6b5e;--line:#dfe5df;--card:#fff;--side:#fff;--top:#1b5e20;--topink:#fff;--accent:#2e7d32}
   *{box-sizing:border-box}
@@ -135,7 +135,7 @@
 <div id="landing">
   <div class="lnav">
     <div class="crest">DA</div>
-    <strong>Online Platform for Producer Support</strong>
+    <strong>e-PSS — e-Producer Support System</strong>
     <div class="spacer"></div>
     <a onclick="document.getElementById('modules').scrollIntoView({behavior:'smooth'})">Modules</a>
     <a onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">How it works</a>
@@ -175,15 +175,15 @@
     </div>
     <div style="text-align:center;margin-top:28px"><button class="btn" onclick="showLogin()">Sign in to explore the system →</button></div>
   </div>
-  <div class="lfoot">Department of Agriculture · Online Platform for Producer Support · e-Voucher Module<br><span style="opacity:.6">Prototype / demonstration only — dummy data</span></div>
+  <div class="lfoot">Department of Agriculture · e-PSS — e-Producer Support System · incorporating the e-Voucher Module<br><span style="opacity:.6">Demonstration system</span></div>
 </div>
 
 <!-- ============ LOGIN ============ -->
 <div id="login" class="login-wrap hidden">
   <div class="login-card">
     <div class="crest">DA</div>
-    <h2>Online Platform for Producer Support</h2>
-    <p class="s">e-Voucher Module &amp; Mobile Application · Department of Agriculture</p>
+    <h2>e-PSS</h2>
+    <p class="s">e-Producer Support System · Department of Agriculture</p>
     <div class="field"><label>Username / ID number</label><input value="demo.user" /></div>
     <div class="field"><label>Password</label><input type="password" value="••••••••" /></div>
     <p style="font-size:12px;color:#5e6b5e;margin:4px 0 10px">Choose a portal to preview:</p>
@@ -204,7 +204,7 @@
   <div class="topbar">
     <span class="navtoggle" onclick="toggleSide()" title="Collapse / expand menu">☰</span>
     <div class="crest">DA</div>
-    <h1>Online Platform for Producer Support<small>e-Voucher Module</small></h1>
+    <h1>e-PSS<small>e-Producer Support System</small></h1>
     <div class="spacer"></div>
     <select class="theme-sel" id="portalSel" onchange="enter(this.value)" title="Switch module / portal — no need to sign out">
       <option value="gov">🏛️ National</option>
@@ -219,7 +219,7 @@
     <span class="badge" style="cursor:pointer" onclick="logout()">Sign out</span>
   </div>
   <div class="app"><nav class="side" id="nav"></nav><div class="main" id="view"></div></div>
-  <div class="appfoot">Department of Agriculture · e-Voucher Module · <a style="cursor:pointer;color:var(--accent)" onclick="logout()">Sign out</a> · Prototype — dummy data, nothing is saved</div>
+  <div class="appfoot">Department of Agriculture · e-PSS — e-Producer Support System · <a style="cursor:pointer;color:var(--accent)" onclick="logout()">Sign out</a> · Live database — your data is saved</div>
 </div>
 
 <!-- ============ PHONE APP ============ -->
@@ -362,7 +362,7 @@ function makePdf(title,lines){
   return pdf;
 }
 function pe(s){return String(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)');}
-function exportPdf(title,lines){dl(title.replace(/[^a-z0-9]+/gi,'_')+'.pdf',makePdf(title,['Department of Agriculture — e-Voucher Module','Generated: 14 May 2026  (PROTOTYPE / dummy data)','',...lines]),'application/pdf');toast('📄 PDF downloaded');}
+function exportPdf(title,lines){dl(title.replace(/[^a-z0-9]+/gi,'_')+'.pdf',makePdf(title,['Department of Agriculture — e-PSS (e-Producer Support System)','Generated: '+new Date().toLocaleString('en-ZA'),'',...lines]),'application/pdf');toast('📄 PDF downloaded');}
 function exportCsv(name,headers,rows){const csv=[headers.join(','),...rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(','))].join('\n');dl(name+'.csv',csv,'text/csv');toast('📊 Excel/CSV downloaded');}
 
 /* ================= ACTIONS (make it real) ================= */
@@ -511,10 +511,14 @@ const VIEWS={
     ${flt(STATE.catalogue,['n','c']).map(i=>`<tr><td>${i.n}</td><td>${i.c}</td><td>${money(i.p)}</td><td>${pill(i.s)}</td><td><button class="btn sm danger" onclick="removeInput('${i.n.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join("")}
     </tbody></table></div>`,
 
-  suppliers:()=>`${crumb("Suppliers Directory")}<h2 class="page-h">Suppliers &amp; Agro-Dealers</h2>
-    <p class="page-sub">${STATE.dealers.length} registered outlets</p>
-    ${searchBar(`<button class="btn" onclick="toast('Prototype: dealer self-registration is part of the supplier portal (ToR 4.7)')">+ Register dealer</button>`)}
-    <div class="panel">${plain(['Dealer / Supplier','Province','District','Contact','Status'],flt(STATE.dealers,['n','dist','c']).map(d=>[d.n,PROV[d.prov],d.dist,d.c,pill(d.s)]))}</div>`,
+  suppliers:()=>{const list=flt(STATE.dealers,['n','dist','c','company_reg','vat']);
+    return `${crumb("Suppliers Directory")}<h2 class="page-h">Suppliers &amp; Agro-Dealers</h2>
+    <p class="page-sub">${STATE.dealers.length} registered outlets · new registrations start as <b>Pending</b> until accredited (ToR 4.7)</p>
+    ${searchBar(`<button class="btn" onclick="showAddDealer()">+ Register dealer</button>`)}
+    <div class="panel"><table><thead><tr><th>Dealer / Supplier</th><th>Province</th><th>District</th><th>Contact</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${list.map(d=>`<tr><td><a style="cursor:pointer;color:var(--accent);font-weight:600" onclick="viewDealer(${d.id})">${d.n}</a></td><td>${PROV[d.prov]||d.prov}</td><td>${d.dist}</td><td>${d.c}</td><td>${pill(d.s)}</td>
+      <td style="white-space:nowrap"><button class="btn sm alt" onclick="viewDealer(${d.id})">View</button> ${d.s==='Pending'?`<button class="btn sm" onclick="approveDealer(${d.id})">Accredit</button>`:''} <button class="btn sm danger" onclick="delDealer(${d.id})">🗑</button></td></tr>`).join("")||`<tr><td colspan="6" style="color:var(--muted)">No dealers.</td></tr>`}
+    </tbody></table></div>`;},
 
   users:()=>`${crumb("Users & Access")}<h2 class="page-h">Users &amp; Access Management</h2>
     <p class="page-sub">Role-based access across national / provincial / district levels (ToR 4.1)</p>
@@ -751,7 +755,7 @@ async function loadAll(){
   STATE.vouchers=vouchers;
   STATE.packages=packages;
   STATE.catalogue=catalogue;
-  STATE.dealers=dealers.map(d=>({id:d.id,n:d.name,prov:d.prov,dist:d.dist,c:d.contact,s:d.status}));
+  STATE.dealers=dealers.map(d=>({id:d.id,n:d.name,prov:d.prov,dist:d.dist,c:d.contact,s:d.status,company_reg:d.company_reg,vat:d.vat,csd:d.csd,bank:d.bank,address:d.address,email:d.email,phone:d.phone,catalogue:d.catalogue}));
   STATE.users=users.map(u=>({id:u.id,n:u.name,r:ROLE_LABEL[u.role]||u.role,lvl:ROLE_LEVEL[u.role]||'—',sc:u.scope||'All provinces',s:'Active'}));
   STATE.grievances=grievances;
   STATE.audit=audit.map(a=>({t:a.ts,a:a.actor,e:a.event,k:a.kind,c:a.kind}));
@@ -788,6 +792,30 @@ function appActions(a){
 async function recommendApp(id){await api('/applications/'+id+'/recommend','POST',{by:meLabel()});await reload();toast('✔ Recommended — sent for approval');}
 async function approveApp(id){if(!confirm('Approve this application and add the farmer to the register?'))return;const r=await api('/applications/'+id+'/approve','POST',{by:meLabel()});if(r.error)return toast('❌ '+r.error);await reload();toast('✅ Approved & added to register');}
 async function rejectApp(id){const reason=prompt('Reason for rejection (recorded for audit):');if(reason===null)return;await api('/applications/'+id+'/reject','POST',{by:meLabel(),reason});await reload();toast('Application rejected');}
+/* ---- supplier / agro-dealer registration ---- */
+function showAddDealer(){const provOpts=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${(k===STATE.scope&&STATE.scopeKind==='prov')?'selected':''}>${v}</option>`).join("");
+  modal("Register supplier / agro-dealer",`
+    <div class="row"><div class="field"><label>Trading / company name</label><input id="d_name" placeholder="e.g. GreenFields Agri"></div><div class="field"><label>Contact person</label><input id="d_contact" placeholder="Full name"></div></div>
+    <div class="row"><div class="field"><label>Company registration no.</label><input id="d_reg" placeholder="e.g. 2019/123456/07"></div><div class="field"><label>VAT number</label><input id="d_vat" placeholder="e.g. 4xxxxxxxxx"></div></div>
+    <div class="row"><div class="field"><label>CSD number</label><input id="d_csd" placeholder="MAAA..."></div><div class="field"><label>Email</label><input id="d_email"></div><div class="field"><label>Phone</label><input id="d_phone"></div></div>
+    <div class="row"><div class="field"><label>Province</label><select id="d_prov">${provOpts}</select></div><div class="field"><label>District</label><input id="d_dist" value="${STATE.scopeKind==='dist'?STATE.scope:''}"></div></div>
+    <div class="field"><label>Physical address</label><input id="d_addr" placeholder="Street, town"></div>
+    <div class="field"><label>Banking details</label><input id="d_bank" placeholder="Bank · account number · branch"></div>
+    <div class="field"><label>Product catalogue (what they stock)</label><input id="d_cat" placeholder="e.g. seed, fertiliser, feed, equipment"></div>
+    <div class="note">New dealers are saved as <b>Pending</b> until an official accredits them.</div>`,
+    "Register dealer",async()=>{const name=$('d_name').value.trim();if(!name){toast('Enter a name');return;}
+      await api('/dealers','POST',{name,contact:$('d_contact').value,company_reg:$('d_reg').value,vat:$('d_vat').value,csd:$('d_csd').value,email:$('d_email').value,phone:$('d_phone').value,prov:$('d_prov').value,dist:$('d_dist').value,address:$('d_addr').value,bank:$('d_bank').value,catalogue:$('d_cat').value});
+      closeModal();await reload();toast('🏪 Dealer registered (pending accreditation)');});
+}
+function viewDealer(id){const d=STATE.dealers.find(x=>x.id===id);if(!d)return;
+  const row=(k,v)=>`<div style="display:flex;padding:6px 0;border-bottom:1px solid var(--line)"><div style="width:160px;color:var(--muted);font-size:13px">${k}</div><div style="flex:1;font-size:13px">${v||'—'}</div></div>`;
+  modal(d.n+' — supplier profile',
+    row('Status',pill(d.s))+row('Contact person',d.c)+row('Company reg. no.',d.company_reg)+row('VAT number',d.vat)+row('CSD number',d.csd)+row('Email',d.email)+row('Phone',d.phone)+row('Province',PROV[d.prov]||d.prov)+row('District',d.dist)+row('Physical address',d.address)+row('Banking details',d.bank)+row('Product catalogue',d.catalogue),
+    d.s==='Pending'?'Accredit dealer':'Close',
+    d.s==='Pending'?(async()=>{await api('/dealers/'+id+'/approve','POST');closeModal();await reload();toast('✅ Dealer accredited');}):closeModal);
+}
+async function approveDealer(id){await api('/dealers/'+id+'/approve','POST');await reload();toast('✅ Dealer accredited & activated');}
+async function delDealer(id){if(!confirm('Remove this dealer?'))return;await api('/dealers/'+id,'DELETE');await reload();toast('🗑 Dealer removed');}
 
 /* ================= CONTROL ================= */
 async function enter(r){

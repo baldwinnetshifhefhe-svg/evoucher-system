@@ -16,7 +16,7 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS producers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,status TEXT DEFAULT 'Active',rica TEXT DEFAULT 'Verified',demo TEXT,email TEXT);
 CREATE TABLE IF NOT EXISTS packages(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,val INTEGER,items TEXT,status TEXT DEFAULT 'Active');
 CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,who TEXT,prov TEXT,pkg TEXT,val INTEGER,status TEXT,otp TEXT,dealer TEXT,created TEXT,redeemed_at TEXT,expiry TEXT);
-CREATE TABLE IF NOT EXISTS dealers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,contact TEXT,status TEXT DEFAULT 'Active');
+CREATE TABLE IF NOT EXISTS dealers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,contact TEXT,status TEXT DEFAULT 'Active',company_reg TEXT,vat TEXT,csd TEXT,bank TEXT,address TEXT,email TEXT,phone TEXT,catalogue TEXT);
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE,password TEXT,name TEXT,role TEXT,scope TEXT);
 CREATE TABLE IF NOT EXISTS grievances(id INTEGER PRIMARY KEY AUTOINCREMENT,ref TEXT,who TEXT,issue TEXT,status TEXT DEFAULT 'Open',created TEXT);
 CREATE TABLE IF NOT EXISTS catalogue(id INTEGER PRIMARY KEY AUTOINCREMENT,n TEXT,c TEXT,p INTEGER,s TEXT DEFAULT 'Approved');
@@ -163,7 +163,11 @@ const server=http.createServer(async(req,res)=>{
 
       // ---- dealers ----
       if(p==='/api/dealers' && m==='GET') return json(res,200,db.prepare('SELECT * FROM dealers ORDER BY id').all());
-      if(p==='/api/dealers' && m==='POST'){const b=await body(req);if(!b.name)return json(res,400,{error:'name required'});db.prepare('INSERT INTO dealers(name,prov,dist,contact,status) VALUES(?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.contact||'—','Active');logAudit('Admin',`Dealer registered: ${b.name}`,'info');return json(res,200,{ok:true});}
+      if(p==='/api/dealers' && m==='POST'){const b=await body(req);if(!b.name)return json(res,400,{error:'name required'});
+        db.prepare('INSERT INTO dealers(name,prov,dist,contact,status,company_reg,vat,csd,bank,address,email,phone,catalogue) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')
+          .run(b.name,b.prov||'GP',b.dist||'—',b.contact||'—','Pending',b.company_reg||'',b.vat||'',b.csd||'',b.bank||'',b.address||'',b.email||'',b.phone||'',b.catalogue||'');
+        logAudit('Admin',`Dealer registered (pending accreditation): ${b.name}`,'wait');return json(res,200,{ok:true});}
+      mm=p.match(/^\/api\/dealers\/(\d+)\/approve$/); if(mm && m==='POST'){const d=db.prepare('SELECT name FROM dealers WHERE id=?').get(+mm[1]);db.prepare("UPDATE dealers SET status='Active' WHERE id=?").run(+mm[1]);logAudit('Admin',`Dealer accredited & activated: ${d?d.name:''}`,'ok');return json(res,200,{ok:true});}
       mm=p.match(/^\/api\/dealers\/(\d+)$/); if(mm && m==='DELETE'){db.prepare('DELETE FROM dealers WHERE id=?').run(+mm[1]);return json(res,200,{ok:true});}
 
       // ---- grievances ----
