@@ -19,7 +19,16 @@
   .topbar .badge{background:rgba(255,255,255,.16);padding:3px 9px;border-radius:20px;font-size:12px;color:var(--topink)}
   .theme-sel{background:rgba(255,255,255,.16);color:var(--topink);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 10px;font-size:12px;font-family:inherit;cursor:pointer}
   .theme-sel option{color:#222}
-  .app{display:flex;min-height:calc(100vh - 54px)}
+  .app{display:flex;height:calc(100vh - 54px)}
+  .navtoggle{cursor:pointer;font-size:18px;padding:1px 9px;border-radius:6px;line-height:1}
+  .navtoggle:hover{background:rgba(255,255,255,.15)}
+  .side .lbl{white-space:nowrap}
+  .side .grp.others-h{cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;padding-right:14px}
+  body.side-collapsed .side{width:58px}
+  body.side-collapsed .side .lbl{display:none}
+  body.side-collapsed .side .grp{display:none}
+  body.side-collapsed .side .others{display:block!important}
+  body.side-collapsed .side a{justify-content:center;gap:0;padding:9px 0}
   .side{width:235px;background:var(--side);border-right:1px solid var(--line);padding:10px 0;flex-shrink:0;overflow:auto}
   .side .grp{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);padding:12px 18px 4px}
   .side a{display:flex;align-items:center;gap:10px;padding:9px 18px;font-size:13.5px;color:var(--ink);cursor:pointer;border-left:3px solid transparent}
@@ -28,7 +37,7 @@
   .side .ico{width:18px;text-align:center}
   .main{flex:1;padding:22px 26px;overflow:auto}
   .crumbs{font-size:12px;color:var(--muted);margin-bottom:6px}
-  .page-h{font-size:22px;margin:0 0 2px;font-weight:700}
+  .page-h{font-size:22px;margin:0 0 2px;font-weight:700;position:sticky;top:0;background:var(--bg);z-index:5;padding:6px 0 4px}
   .page-sub{color:var(--muted);margin:0 0 18px;font-size:13px}
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
@@ -193,6 +202,7 @@
 <!-- ============ WEB APP SHELL ============ -->
 <div id="shell" class="hidden">
   <div class="topbar">
+    <span class="navtoggle" onclick="toggleSide()" title="Collapse / expand menu">☰</span>
     <div class="crest">DA</div>
     <h1>Online Platform for Producer Support<small>e-Voucher Module</small></h1>
     <div class="spacer"></div>
@@ -651,8 +661,12 @@ const VIEWS={
         <div class="row"><div class="field"><label>Enterprise</label><input id="a_ent" placeholder="e.g. Maize · 2ha"></div><div class="field"><label>Gender·Age</label><input id="a_demo" placeholder="e.g. F·29"></div></div>
         <button class="btn" onclick="applyNow()">Submit application</button>
       </div>
-      <div class="panel"><h3>Applications (${pending.length} pending)</h3><table><thead><tr><th>Name</th><th>Province</th><th>Enterprise</th><th>Status</th><th></th></tr></thead><tbody>
-      ${A.map(a=>`<tr><td>${a.name} <span style="color:var(--muted);font-size:11px">(${a.demo})</span></td><td>${PROV[a.prov]||a.prov}</td><td>${a.ent}</td><td>${pill(a.status)}</td><td>${a.status==='Applied'?`<button class="btn sm" onclick="approveApp(${a.id})">Approve</button> <button class="btn sm danger" onclick="rejectApp(${a.id})">Reject</button>`:''}</td></tr>`).join("")||`<tr><td colspan="5" style="color:var(--muted)">No applications.</td></tr>`}
+      <div class="panel"><h3>Adjudication queue (${pending.length} new)</h3>
+        <div class="note" style="margin-bottom:10px">You are signed in as <b>${meLabel()}</b>. District officers <b>recommend</b>; province/national <b>approve</b>. The recommender and approver must be different people.</div>
+        <table><thead><tr><th>Name</th><th>Province</th><th>Status / trail</th><th>Decision</th></tr></thead><tbody>
+      ${A.map(a=>`<tr><td>${a.name} <span style="color:var(--muted);font-size:11px">(${a.demo})</span><br><span style="color:var(--muted);font-size:11px">${a.ent}</span></td><td>${PROV[a.prov]||a.prov}</td>
+        <td>${pill(a.status)}${a.recommended_by?`<br><span style="font-size:11px;color:var(--muted)">rec: ${a.recommended_by}</span>`:''}${a.approved_by?`<br><span style="font-size:11px;color:var(--muted)">app: ${a.approved_by}</span>`:''}${a.reason?`<br><span style="font-size:11px;color:#c0392b">reason: ${a.reason}</span>`:''}</td>
+        <td>${appActions(a)}</td></tr>`).join("")||`<tr><td colspan="4" style="color:var(--muted)">No applications.</td></tr>`}
       </tbody></table></div>
     </div>`;
   },
@@ -749,8 +763,21 @@ async function sendComms(){const q=audCrit();q.channel=val('c_chan');q.subject=v
 /* ---- redemption (triggers immediate supplier payment) + applications ---- */
 async function doRedeem(id,no){const otp=prompt('Enter the OTP for voucher '+no+' (shown in the table for this demo):');if(otp===null)return;const dealer=STATE.role==='dealer'?'AgriMart Tshwane':(document.getElementById('redeemDealer')||{}).value;const r=await api('/vouchers/'+id+'/redeem','POST',{otp,dealer});if(r.error)return toast('❌ '+r.error);await reload();toast('✅ '+no+' redeemed — R'+r.paid+' paid to supplier instantly ('+r.ref+')');}
 async function applyNow(){const name=(val('a_name')||'').trim();if(!name)return toast('Enter a name');await api('/applications','POST',{name,prov:val('a_prov'),dist:val('a_dist'),ent:val('a_ent'),demo:val('a_demo')});await reload();toast('📝 Application submitted');}
-async function approveApp(id){if(!confirm('Approve this application and add the farmer to the register?'))return;await api('/applications/'+id+'/approve','POST');await reload();toast('✅ Approved & added to register');}
-async function rejectApp(id){if(!confirm('Reject this application?'))return;await api('/applications/'+id+'/reject','POST');await reload();toast('Application rejected');}
+function meLabel(){const n=NAV[STATE.role];return (n?n.label:'Official')+(scopeLabel()?' — '+scopeLabel():'');}
+function appActions(a){
+  if(a.status==='Applied'){
+    if(STATE.role==='gov_dist') return `<button class="btn sm" onclick="recommendApp(${a.id})">Recommend</button> <button class="btn sm danger" onclick="rejectApp(${a.id})">Reject</button>`;
+    return `<span style="color:var(--muted);font-size:11px">awaiting district recommendation</span> <button class="btn sm danger" onclick="rejectApp(${a.id})">Reject</button>`;
+  }
+  if(a.status==='Recommended'){
+    if(STATE.role==='gov_dist') return `<span style="color:var(--muted);font-size:11px">recommended — awaiting approval</span>`;
+    return `<button class="btn sm" onclick="approveApp(${a.id})">Approve</button> <button class="btn sm danger" onclick="rejectApp(${a.id})">Reject</button>`;
+  }
+  return '';
+}
+async function recommendApp(id){await api('/applications/'+id+'/recommend','POST',{by:meLabel()});await reload();toast('✔ Recommended — sent for approval');}
+async function approveApp(id){if(!confirm('Approve this application and add the farmer to the register?'))return;const r=await api('/applications/'+id+'/approve','POST',{by:meLabel()});if(r.error)return toast('❌ '+r.error);await reload();toast('✅ Approved & added to register');}
+async function rejectApp(id){const reason=prompt('Reason for rejection (recorded for audit):');if(reason===null)return;await api('/applications/'+id+'/reject','POST',{by:meLabel(),reason});await reload();toast('Application rejected');}
 
 /* ================= CONTROL ================= */
 async function enter(r){
@@ -762,12 +789,20 @@ async function enter(r){
   else {STATE.scopeKind=null;STATE.scope=null;}
   $("login").classList.add("hidden");$("shell").classList.remove("hidden");
   const cfg=NAV[r];$("roleBadge").textContent=cfg.label;$("roleSub").textContent=cfg.sub;
-  $("nav").innerHTML=`<div class="grp">Menu</div>`+cfg.items.map((it,i)=>`<a class="${i===0?'active':''}" onclick="go('${it[0]}',this)"><span class="ico">${it[1]}</span>${it[2]}</a>`).join("");
+  STATE.cfg=cfg; renderNav();
   $("view").innerHTML='<p style="color:var(--muted)">Loading from database…</p>';
   await loadAll();
-  STATE.view=cfg.items[0][0];renderView();
+  STATE.view=cfg.items[0][0];renderView();setActive(STATE.view);
 }
-function go(v,el){STATE.view=v;STATE.filter='';if(el){document.querySelectorAll('.side a').forEach(a=>a.classList.remove('active'));el.classList.add('active');}renderView();}
+function navLink(it){return `<a data-v="${it[0]}" onclick="go('${it[0]}')" title="${it[2]}"><span class="ico">${it[1]}</span><span class="lbl">${it[2]}</span></a>`;}
+function renderNav(){const items=STATE.cfg.items;const main=items.slice(0,7),others=items.slice(7);
+  let h=`<div class="grp lblonly">Menu</div>`+main.map(navLink).join('');
+  if(others.length){h+=`<div class="grp others-h" onclick="toggleOthers()"><span>OTHERS</span><span id="othersCaret">▸</span></div><div class="others" id="othersBox" style="display:none">`+others.map(navLink).join('')+`</div>`;}
+  $("nav").innerHTML=h; setActive(STATE.view);}
+function setActive(v){document.querySelectorAll('.side a').forEach(a=>a.classList.toggle('active',a.getAttribute('data-v')===v));}
+function toggleOthers(){const b=$('othersBox');if(!b)return;const open=b.style.display!=='none';b.style.display=open?'none':'block';const c=$('othersCaret');if(c)c.textContent=open?'▸':'▾';}
+function toggleSide(){document.body.classList.toggle('side-collapsed');}
+function go(v){STATE.view=v;STATE.filter='';setActive(v);renderView();}
 function renderView(){$("view").innerHTML=(VIEWS[STATE.view]||(()=>"<p>Coming soon</p>"))();$("view").scrollTop=0;}
 function showLogin(){$("landing").classList.add("hidden");$("login").classList.remove("hidden");}
 function openProfile(id){STATE.selected=id;STATE.view='profile';renderView();}

@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,username T
 CREATE TABLE IF NOT EXISTS grievances(id INTEGER PRIMARY KEY AUTOINCREMENT,ref TEXT,who TEXT,issue TEXT,status TEXT DEFAULT 'Open',created TEXT);
 CREATE TABLE IF NOT EXISTS catalogue(id INTEGER PRIMARY KEY AUTOINCREMENT,n TEXT,c TEXT,p INTEGER,s TEXT DEFAULT 'Approved');
 CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,audience TEXT,channel TEXT,subject TEXT,body TEXT,recipients INTEGER);
-CREATE TABLE IF NOT EXISTS applications(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,demo TEXT,status TEXT DEFAULT 'Applied',created TEXT);
+CREATE TABLE IF NOT EXISTS applications(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,demo TEXT,status TEXT DEFAULT 'Applied',created TEXT,recommended_by TEXT,approved_by TEXT,reason TEXT);
 CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,supplier TEXT,voucher_no TEXT,who TEXT,amount INTEGER,gateway TEXT,ref TEXT,status TEXT);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,actor TEXT,event TEXT,kind TEXT);
 `);
@@ -231,10 +231,18 @@ const server=http.createServer(async(req,res)=>{
       // ---- farmer applications (apply -> screen -> approve/reject) ----
       if(p==='/api/applications' && m==='GET') return json(res,200,db.prepare('SELECT * FROM applications ORDER BY id DESC').all());
       if(p==='/api/applications' && m==='POST'){const b=await body(req);if(!b.name)return json(res,400,{error:'name required'});db.prepare('INSERT INTO applications(name,prov,dist,ent,demo,status,created) VALUES(?,?,?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.ent||'—',b.demo||'—','Applied',today());logAudit('Farmer',`Application received: ${b.name}`,'wait');return json(res,200,{ok:true});}
+      mm=p.match(/^\/api\/applications\/(\d+)\/recommend$/);
+      if(mm && m==='POST'){const b=await body(req);const ap=db.prepare('SELECT * FROM applications WHERE id=?').get(+mm[1]);if(!ap)return json(res,404,{error:'not found'});if(ap.status!=='Applied')return json(res,400,{error:'Only new applications can be recommended'});db.prepare("UPDATE applications SET status='Recommended',recommended_by=? WHERE id=?").run(b.by||'District officer',+mm[1]);logAudit(b.by||'District',`Application recommended: ${ap.name}`,'info');return json(res,200,{ok:true});}
       mm=p.match(/^\/api\/applications\/(\d+)\/approve$/);
-      if(mm && m==='POST'){const ap=db.prepare('SELECT * FROM applications WHERE id=?').get(+mm[1]);if(!ap)return json(res,404,{error:'not found'});db.prepare("UPDATE applications SET status='Approved' WHERE id=?").run(+mm[1]);const email=ap.name.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/ +/g,'.')+'@example.co.za';db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email) VALUES(?,?,?,?,?,?,?,?)').run(ap.name,ap.prov,ap.dist,ap.ent,'Active','Verified',ap.demo,email);logAudit('Admin',`Application approved & added to register: ${ap.name}`,'ok');return json(res,200,{ok:true});}
+      if(mm && m==='POST'){const b=await body(req);const ap=db.prepare('SELECT * FROM applications WHERE id=?').get(+mm[1]);if(!ap)return json(res,404,{error:'not found'});
+        if(ap.status!=='Recommended')return json(res,400,{error:'Application must be RECOMMENDED by a district officer before it can be approved (separation of duties)'});
+        if(b.by&&ap.recommended_by&&b.by===ap.recommended_by)return json(res,400,{error:'The same official cannot both recommend and approve (separation of duties)'});
+        db.prepare("UPDATE applications SET status='Approved',approved_by=? WHERE id=?").run(b.by||'Approver',+mm[1]);
+        const email=ap.name.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/ +/g,'.')+'@example.co.za';
+        db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email) VALUES(?,?,?,?,?,?,?,?)').run(ap.name,ap.prov,ap.dist,ap.ent,'Active','Verified',ap.demo,email);
+        logAudit(b.by||'Approver',`Application APPROVED & added to register: ${ap.name} (recommended by ${ap.recommended_by})`,'ok');return json(res,200,{ok:true});}
       mm=p.match(/^\/api\/applications\/(\d+)\/reject$/);
-      if(mm && m==='POST'){const ap=db.prepare('SELECT name FROM applications WHERE id=?').get(+mm[1]);db.prepare("UPDATE applications SET status='Rejected' WHERE id=?").run(+mm[1]);logAudit('Admin',`Application rejected: ${ap?ap.name:''}`,'no');return json(res,200,{ok:true});}
+      if(mm && m==='POST'){const b=await body(req);const ap=db.prepare('SELECT name FROM applications WHERE id=?').get(+mm[1]);db.prepare("UPDATE applications SET status='Rejected',reason=? WHERE id=?").run(b.reason||'',+mm[1]);logAudit(b.by||'Admin',`Application rejected: ${ap?ap.name:''} (${b.reason||'no reason given'})`,'no');return json(res,200,{ok:true});}
 
       // ---- payments (auto-created at redemption, via gateway) ----
       if(p==='/api/payments' && m==='GET') return json(res,200,db.prepare('SELECT * FROM payments ORDER BY id DESC LIMIT 100').all());
