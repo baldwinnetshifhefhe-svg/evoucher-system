@@ -400,9 +400,9 @@ async function removeUser(n){const u=STATE.users.find(x=>x.n===n);if(u&&confirm(
 
 /* ================= NAV ================= */
 const NAV={
-  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"]]},
-  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"]]},
-  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["griev","📣","Grievances"]]},
+  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["about","ℹ️","About this demo"]]},
+  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
+  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
   dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redeem","✅","Redeemed Inputs"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
   fin:{label:"Financial Institution",sub:"Clearing Officer",items:[["fdash","📊","Dashboard"],["clearing","🏦","Deposit Clearing"],["fpay","💳","Payments"]]},
 };
@@ -599,6 +599,7 @@ const VIEWS={
     const aud0={prov:STATE.scopeKind==='prov'?STATE.scope:'',dist:STATE.scopeKind==='dist'?STATE.scope:''};
     return `${crumb("Communications")}<h2 class="page-h">Communications</h2>
     <p class="page-sub">Email or SMS a group of beneficiaries by criteria — kept in a log (ToR 4.6)</p>
+    <div class="note" style="margin-bottom:14px">⚠️ Demo: messages are logged with recipient counts but <b>not actually delivered</b> yet — production connects a real email service and SMS gateway. See "About this demo".</div>
     <div class="row">
       <div class="panel"><h3>New message</h3>
         <div class="field"><label>Send to</label><select id="c_aud" onchange="previewComms()"><option value="all">All beneficiaries</option><option value="F">Women</option><option value="youth">Youth (≤35)</option>${STATE.scopeKind?'':'<optgroup label="Province">'+Object.entries(PROV).map(([k,v])=>`<option value="prov:${k}">${v}</option>`).join('')+'</optgroup>'}</select></div>
@@ -611,6 +612,29 @@ const VIEWS={
       <div class="panel"><h3>Sent messages (${(STATE.messages||[]).length})</h3>${plain(['When','To','Channel','Subject','Recipients'],(STATE.messages||[]).map(m=>[m.ts,m.audience,m.channel,m.subject,m.recipients]))}</div>
     </div>`;
   },
+
+  about:()=>`${crumb("About this demo")}<h2 class="page-h">About this demo — honest notes</h2>
+    <p class="page-sub">What is real and what is still simulated in this version of the system</p>
+    <div class="panel"><h3>✅ Real in this system</h3>
+      <ul style="margin:0;padding-left:20px;font-size:13.5px;line-height:1.7">
+        <li>Data is <b>saved in a real database</b> — beneficiaries, packages, vouchers, grievances, communications and the audit trail all persist.</li>
+        <li><b>National / Provincial / District</b> access levels work and scope what each user sees.</li>
+        <li>Criteria-based <b>targeted distribution</b> (e.g. women, youth) and bulk <b>communications</b> work.</li>
+        <li><b>PDF / Excel exports</b> contain the real saved data.</li>
+      </ul></div>
+    <div class="panel"><h3>⚠️ Simulated / demo only</h3>
+      <ul style="margin:0;padding-left:20px;font-size:13.5px;line-height:1.7">
+        <li><b>Bank integration</b> is a demo screen — a real bank link needs the bank's agreement and a registered payment gateway.</li>
+        <li><b>Email &amp; SMS are simulated</b> — they are logged with recipient counts, but no real message is delivered yet. Production would connect an email service and an SMS gateway.</li>
+        <li><b>OTP</b> is shown on screen for testing; in production it is texted to the producer.</li>
+        <li><b>RICA verification</b> is shown as a status, not a live check (needs official data access).</li>
+        <li>Logins use simple demo passwords — not production-grade security.</li>
+      </ul></div>
+    <div class="panel"><h3>ℹ️ About hosting</h3>
+      <ul style="margin:0;padding-left:20px;font-size:13.5px;line-height:1.7">
+        <li>On the free/Starter hosting plan, the database may <b>reset to seed data</b> when the app restarts — unless a persistent disk or a cloud database is added.</li>
+        <li>The tender's <b>production</b> system would be built on the required stack (C#/.NET + SQL Server/Oracle).</li>
+      </ul></div>`,
 
   /* dealer / fin */
   ddash:()=>`${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">AgriMart Tshwane — Dashboard</h2><p class="page-sub">Redemptions and invoicing</p>
