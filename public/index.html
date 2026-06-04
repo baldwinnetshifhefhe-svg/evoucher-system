@@ -206,17 +206,16 @@
     <div class="crest">DA</div>
     <h1>e-PSS<small>e-Producer Support System</small></h1>
     <div class="spacer"></div>
-    <select class="theme-sel" id="portalSel" onchange="enter(this.value)" title="Switch module / portal — no need to sign out">
-      <option value="gov">🏛️ National</option>
-      <option value="gov_prov">🗺️ Provincial (KZN)</option>
-      <option value="gov_dist">📍 District (uMzinyathi)</option>
-      <option value="dealer">🏪 Agro-Dealer</option>
-      <option value="producer">📱 Producer app</option>
+    <select class="theme-sel hidden" id="scopeSel" onchange="setScope(this.value)" title="Switch province / district"></select>
+    <select class="theme-sel" id="portalSel" onchange="enter(this.value)" title="Switch module — no need to sign out">
+      <option value="gov">🏛️ National Superuser</option>
+      <option value="gov_prov">🗺️ Provincial Admin</option>
+      <option value="gov_dist">📍 District Officer</option>
+      <option value="dealer">🏪 Agro-Dealer / Supplier</option>
+      <option value="producer">📱 Producer (Mobile App)</option>
     </select>
     <select class="theme-sel" id="themeSel" onchange="setTheme(this.value)" title="Change theme"></select>
-    <span class="badge" id="roleBadge">National Superuser</span>
-    <div class="user">Demo User<br><small id="roleSub" style="opacity:.8">National</small></div>
-    <span class="badge" style="cursor:pointer" onclick="logout()">Sign out</span>
+    <span class="badge" style="cursor:pointer" onclick="logout()" title="Return to portal selection">Sign out</span>
   </div>
   <div class="app"><nav class="side" id="nav"></nav><div class="main" id="view"></div></div>
   <div class="appfoot">Department of Agriculture · e-PSS — e-Producer Support System · <a style="cursor:pointer;color:var(--accent)" onclick="logout()">Sign out</a> · Live database — your data is saved</div>
@@ -688,7 +687,8 @@ const VIEWS={
   redemptions:()=>{
     const issued=STATE.vouchers.filter(v=>v.status==='Issued'&&!isExpired(v));
     const expired=STATE.vouchers.filter(v=>isExpired(v));
-    const dealerPick=STATE.role==='dealer'?`<input value="AgriMart Tshwane" disabled style="max-width:260px;padding:9px;border:1px solid var(--line);border-radius:7px">`:`<select id="redeemDealer" style="max-width:260px;padding:9px;border:1px solid var(--line);border-radius:7px">${STATE.dealers.map(d=>`<option>${d.n}</option>`).join("")}</select>`;
+    const accredited=STATE.dealers.filter(d=>d.s==='Active');
+    const dealerPick=STATE.role==='dealer'?`<input value="AgriMart Tshwane" disabled style="max-width:260px;padding:9px;border:1px solid var(--line);border-radius:7px">`:`<select id="redeemDealer" style="max-width:280px;padding:9px;border:1px solid var(--line);border-radius:7px">${accredited.map(d=>`<option>${d.n}</option>`).join("")||'<option value="">(no accredited dealers yet)</option>'}</select>`;
     return `${crumb("Redemptions")}<h2 class="page-h">Redemptions</h2>
     <p class="page-sub">Redeem a voucher with the producer's OTP — payment to the supplier is raised <b>immediately</b> (ToR 4.9)</p>
     <div class="note" style="margin-bottom:14px">🔐 In production the OTP is texted to the producer; shown here for testing. ${expired.length?`<b>${expired.length} voucher(s) have expired</b> (financial year) and can no longer be redeemed.`:''}</div>
@@ -826,11 +826,12 @@ async function enter(r){
   else if(r==='gov_dist'){STATE.scopeKind='dist';STATE.scope='uMzinyathi';}
   else {STATE.scopeKind=null;STATE.scope=null;}
   $("login").classList.add("hidden");$("shell").classList.remove("hidden");
-  const cfg=NAV[r];$("roleBadge").textContent=cfg.label;$("roleSub").textContent=cfg.sub;
+  const cfg=NAV[r];
   const ps=$("portalSel"); if(ps) ps.value=r;
   STATE.cfg=cfg; renderNav();
   $("view").innerHTML='<p style="color:var(--muted)">Loading from database…</p>';
   await loadAll();
+  renderScopeSel();
   STATE.view=cfg.items[0][0];renderView();setActive(STATE.view);
 }
 function navLink(it){return `<a data-v="${it[0]}" onclick="go('${it[0]}')" title="${it[2]}"><span class="ico">${it[1]}</span><span class="lbl">${it[2]}</span></a>`;}
@@ -841,6 +842,11 @@ function renderNav(){const items=STATE.cfg.items;const main=items.slice(0,7),oth
 function setActive(v){document.querySelectorAll('.side a').forEach(a=>a.classList.toggle('active',a.getAttribute('data-v')===v));}
 function toggleOthers(){const b=$('othersBox');if(!b)return;const open=b.style.display!=='none';b.style.display=open?'none':'block';const c=$('othersCaret');if(c)c.textContent=open?'▸':'▾';}
 function toggleSide(){document.body.classList.toggle('side-collapsed');}
+function renderScopeSel(){const s=$("scopeSel");if(!s)return;
+  if(STATE.scopeKind==='prov'){s.classList.remove('hidden');s.innerHTML=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${k===STATE.scope?'selected':''}>📍 ${v}</option>`).join("");}
+  else if(STATE.scopeKind==='dist'){s.classList.remove('hidden');let dists=[...new Set(STATE.producers.map(p=>p.dist).filter(Boolean))].sort();if(STATE.scope&&!dists.includes(STATE.scope))dists.unshift(STATE.scope);s.innerHTML=dists.map(d=>`<option value="${d}" ${d===STATE.scope?'selected':''}>📍 ${d} district</option>`).join("");}
+  else {s.classList.add('hidden');s.innerHTML='';}}
+function setScope(v){STATE.scope=v;STATE.filter='';renderView();}
 function go(v){STATE.view=v;STATE.filter='';setActive(v);renderView();}
 function renderView(){$("view").innerHTML=(VIEWS[STATE.view]||(()=>"<p>Coming soon</p>"))();$("view").scrollTop=0;}
 function showLogin(){$("landing").classList.add("hidden");$("login").classList.remove("hidden");}
