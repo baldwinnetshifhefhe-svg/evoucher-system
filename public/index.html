@@ -206,6 +206,13 @@
     <div class="crest">DA</div>
     <h1>Online Platform for Producer Support<small>e-Voucher Module</small></h1>
     <div class="spacer"></div>
+    <select class="theme-sel" id="portalSel" onchange="enter(this.value)" title="Switch module / portal — no need to sign out">
+      <option value="gov">🏛️ National</option>
+      <option value="gov_prov">🗺️ Provincial (KZN)</option>
+      <option value="gov_dist">📍 District (uMzinyathi)</option>
+      <option value="dealer">🏪 Agro-Dealer</option>
+      <option value="producer">📱 Producer app</option>
+    </select>
     <select class="theme-sel" id="themeSel" onchange="setTheme(this.value)" title="Change theme"></select>
     <span class="badge" id="roleBadge">National Superuser</span>
     <div class="user">Demo User<br><small id="roleSub" style="opacity:.8">National</small></div>
@@ -789,6 +796,7 @@ async function enter(r){
   else {STATE.scopeKind=null;STATE.scope=null;}
   $("login").classList.add("hidden");$("shell").classList.remove("hidden");
   const cfg=NAV[r];$("roleBadge").textContent=cfg.label;$("roleSub").textContent=cfg.sub;
+  const ps=$("portalSel"); if(ps) ps.value=r;
   STATE.cfg=cfg; renderNav();
   $("view").innerHTML='<p style="color:var(--muted)">Loading from database…</p>';
   await loadAll();
