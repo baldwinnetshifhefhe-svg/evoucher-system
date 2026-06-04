@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS catalogue(id INTEGER PRIMARY KEY AUTOINCREMENT,n TEXT
 CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,audience TEXT,channel TEXT,subject TEXT,body TEXT,recipients INTEGER);
 CREATE TABLE IF NOT EXISTS applications(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,demo TEXT,status TEXT DEFAULT 'Applied',created TEXT,recommended_by TEXT,approved_by TEXT,reason TEXT);
 CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,supplier TEXT,voucher_no TEXT,who TEXT,amount INTEGER,gateway TEXT,ref TEXT,status TEXT);
+CREATE TABLE IF NOT EXISTS feedback(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,role TEXT,rating INTEGER,comment TEXT,by TEXT);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,actor TEXT,event TEXT,kind TEXT);
 `);
 
@@ -251,6 +252,10 @@ const server=http.createServer(async(req,res)=>{
 
       // ---- payments (auto-created at redemption, via gateway) ----
       if(p==='/api/payments' && m==='GET') return json(res,200,db.prepare('SELECT * FROM payments ORDER BY id DESC LIMIT 100').all());
+
+      // ---- user feedback / ratings ----
+      if(p==='/api/feedback' && m==='GET') return json(res,200,db.prepare('SELECT * FROM feedback ORDER BY id DESC LIMIT 100').all());
+      if(p==='/api/feedback' && m==='POST'){const b=await body(req);db.prepare('INSERT INTO feedback(ts,role,rating,comment,by) VALUES(?,?,?,?,?)').run(now(),b.role||'—',+b.rating||0,b.comment||'',b.by||'');logAudit(b.by||'User',`Feedback: ${+b.rating||0}★ (${b.role||''})`,'info');return json(res,200,{ok:true});}
 
       // ---- users (list/add/remove for the Users & Access screen) ----
       if(p==='/api/users' && m==='GET') return json(res,200,db.prepare('SELECT id,username,name,role,scope FROM users ORDER BY id').all());
