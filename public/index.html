@@ -184,18 +184,20 @@
     <div class="crest">DA</div>
     <h2>e-PSS</h2>
     <p class="s">e-Producer Support System · Department of Agriculture</p>
-    <div class="field"><label>Username / ID number</label><input value="demo.user" /></div>
-    <div class="field"><label>Password</label><input type="password" value="••••••••" /></div>
-    <p style="font-size:12px;color:#5e6b5e;margin:4px 0 10px">Choose a portal to preview:</p>
-    <div class="roles">
-      <div class="role" onclick="enter('gov')"><div class="ri">🏛️</div><div class="rt">National Superuser</div><div class="rd">Full access, all provinces</div></div>
-      <div class="role" onclick="enter('gov_prov')"><div class="ri">🗺️</div><div class="rt">Provincial Admin</div><div class="rd">Scoped to KwaZulu-Natal</div></div>
-      <div class="role" onclick="enter('gov_dist')"><div class="ri">📍</div><div class="rt">District Officer</div><div class="rd">Scoped to uMzinyathi (KZN)</div></div>
-      <div class="role" onclick="enter('dealer')"><div class="ri">🏪</div><div class="rt">Agro-Dealer / Supplier</div><div class="rd">Redemptions &amp; invoices</div></div>
-      <div class="role" onclick="enter('producer')"><div class="ri">📱</div><div class="rt">Producer (Mobile App)</div><div class="rd">Receive &amp; redeem vouchers</div></div>
+    <div id="loginErr" style="display:none;background:#fdeceb;color:#c0392b;font-size:12.5px;padding:8px 11px;border-radius:7px;margin-bottom:10px"></div>
+    <div class="field"><label>Username</label><input id="u" placeholder="e.g. admin" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="field"><label>Password</label><input id="pw" type="password" placeholder="password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn" style="width:100%" onclick="doLogin()">Sign in →</button>
+    <div style="font-size:11.5px;color:#5e6b5e;background:#f7faf7;border:1px dashed #dfe5df;border-radius:8px;padding:10px;margin-top:14px;line-height:1.7">
+      <b>Demo accounts (username / password):</b><br>
+      <b>admin</b> / admin123 — National Superuser<br>
+      <b>kzn</b> / kzn123 — Provincial Admin (KwaZulu-Natal)<br>
+      <b>umzinyathi</b> / dist123 — District Officer (uMzinyathi)<br>
+      <b>dealer</b> / dealer123 — Agro-Dealer / Supplier<br>
+      <span style="color:#9aa39a">also: fs/fs123 · vhembe/dist123 · finance/fin123 · auditor/audit123</span>
     </div>
-    <div class="login-theme" id="loginTheme"></div>
-    <p style="text-align:center;font-size:11px;color:#9aa39a;margin:10px 0 0">↑ tap a colour to change the theme</p>
+    <div class="login-theme" id="loginTheme" style="margin-top:14px"></div>
+    <p style="text-align:center;font-size:11px;color:#9aa39a;margin:8px 0 0">↑ tap a colour to change the theme · or try the Producer app from the home page</p>
   </div>
 </div>
 
@@ -215,7 +217,9 @@
       <option value="producer">📱 Producer (Mobile App)</option>
     </select>
     <select class="theme-sel" id="themeSel" onchange="setTheme(this.value)" title="Change theme"></select>
-    <span class="badge" style="cursor:pointer" onclick="logout()" title="Return to portal selection">Sign out</span>
+    <span class="badge" id="clock" style="font-variant-numeric:tabular-nums;cursor:default" title="Current date & time"></span>
+    <div class="user" id="whoBox" style="font-size:13px;text-align:right;line-height:1.2"></div>
+    <span class="badge" style="cursor:pointer" onclick="logout()" title="Sign out">Sign out</span>
   </div>
   <div class="app"><nav class="side" id="nav"></nav><div class="main" id="view"></div></div>
   <div class="appfoot">Department of Agriculture · e-PSS — e-Producer Support System · <a style="cursor:pointer;color:var(--accent)" onclick="logout()">Sign out</a> · Live database — your data is saved</div>
@@ -420,9 +424,9 @@ async function removeUser(n){const u=STATE.users.find(x=>x.n===n);if(u&&confirm(
 
 /* ================= NAV ================= */
 const NAV={
-  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["about","ℹ️","About this demo"]]},
-  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
-  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
+  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
+  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
+  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["griev","📣","Grievances"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
   dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redemptions","✅","Redeem Vouchers"],["payments","💳","My Payments"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
   fin:{label:"Financial Institution",sub:"Clearing Officer",items:[["fdash","📊","Dashboard"],["clearing","🏦","Deposit Clearing"],["fpay","💳","Payments"]]},
 };
@@ -717,6 +721,20 @@ const VIEWS={
     </tbody></table></div>
     <div class="note">The core protection: <b>every Rand paid traces to a redeemed voucher, which traces to an approved, RICA-verified beneficiary.</b></div>`,
 
+  faqs:()=>{const qa=[
+    ["What is e-PSS?","The e-Producer Support System — government distributes subsidised farming inputs to producers through secure commodity vouchers, tracked end-to-end."],
+    ["Is the voucher money?","No. It is a commodity voucher: the producer receives a fixed package of inputs (goods), never cash."],
+    ["How long is a voucher valid?","Until the end of the financial year (31 March). It can never carry into the next budget year, and expired vouchers cannot be redeemed."],
+    ["How does a farmer get support?","They apply; the application is RICA-checked and screened; a district officer recommends and a provincial/national official approves; then a voucher is issued by SMS."],
+    ["How is a voucher redeemed?","The producer visits an accredited agro-dealer and confirms with a one-time PIN (OTP). It works online or offline."],
+    ["Who gets paid, and when?","The supplier — not the farmer. Payment is raised immediately when the voucher is redeemed, via the payment gateway to the supplier's bank account."],
+    ["How does the system fight corruption?","Commodity vouchers (no cash), RICA verification, separation of duties (recommender ≠ approver), one active voucher per farmer per package, OTP proof of delivery, and a full audit trail."],
+    ["What are the access levels?","National, Provincial and District — each user sees only their own area. Suppliers and producers have their own portals."],
+    ["What is still a demonstration?","Real SMS/email delivery, the live payment gateway/BAS, and the RICA service are not connected yet — see 'About this demo'."],
+  ];
+    return `${crumb("FAQs")}<h2 class="page-h">Frequently Asked Questions</h2><p class="page-sub">Quick answers about how e-PSS works</p>`+qa.map(x=>`<div class="panel"><h3 style="margin:0 0 6px">${x[0]}</h3><div style="font-size:13.5px;color:var(--muted)">${x[1]}</div></div>`).join("");
+  },
+
   /* dealer / fin */
   ddash:()=>`${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">AgriMart Tshwane — Dashboard</h2><p class="page-sub">Redemptions and invoicing</p>
     <div class="cards">${card("Redemptions this month","38","")}${card("Value redeemed","R 96 200","")}${card("Invoices outstanding","R 7 300","1 pending")}${card("Paid to date","R 142 800","")}</div>
@@ -756,7 +774,7 @@ async function loadAll(){
   STATE.packages=packages;
   STATE.catalogue=catalogue;
   STATE.dealers=dealers.map(d=>({id:d.id,n:d.name,prov:d.prov,dist:d.dist,c:d.contact,s:d.status,company_reg:d.company_reg,vat:d.vat,csd:d.csd,bank:d.bank,address:d.address,email:d.email,phone:d.phone,catalogue:d.catalogue}));
-  STATE.users=users.map(u=>({id:u.id,n:u.name,r:ROLE_LABEL[u.role]||u.role,lvl:ROLE_LEVEL[u.role]||'—',sc:u.scope||'All provinces',s:'Active'}));
+  STATE.users=users.map(u=>({id:u.id,n:u.name,r:ROLE_LABEL[u.role]||u.role,lvl:ROLE_LEVEL[u.role]||'—',sc:PROV[u.scope]||u.scope||'All provinces',s:'Active'}));
   STATE.grievances=grievances;
   STATE.audit=audit.map(a=>({t:a.ts,a:a.actor,e:a.event,k:a.kind,c:a.kind}));
   STATE.messages=messages;
@@ -777,7 +795,7 @@ async function sendComms(){const q=audCrit();q.channel=val('c_chan');q.subject=v
 /* ---- redemption (triggers immediate supplier payment) + applications ---- */
 async function doRedeem(id,no){const otp=prompt('Enter the OTP for voucher '+no+' (shown in the table for this demo):');if(otp===null)return;const dealer=STATE.role==='dealer'?'AgriMart Tshwane':(document.getElementById('redeemDealer')||{}).value;const r=await api('/vouchers/'+id+'/redeem','POST',{otp,dealer});if(r.error)return toast('❌ '+r.error);await reload();toast('✅ '+no+' redeemed — R'+r.paid+' paid to supplier instantly ('+r.ref+')');}
 async function applyNow(){const name=(val('a_name')||'').trim();if(!name)return toast('Enter a name');await api('/applications','POST',{name,prov:val('a_prov'),dist:val('a_dist'),ent:val('a_ent'),demo:val('a_demo')});await reload();toast('📝 Application submitted');}
-function meLabel(){const n=NAV[STATE.role];return (n?n.label:'Official')+(scopeLabel()?' — '+scopeLabel():'');}
+function meLabel(){return STATE.me?STATE.me.name:((NAV[STATE.role]&&NAV[STATE.role].label)||'Official');}
 function appActions(a){
   if(a.status==='Applied'){
     if(STATE.role==='gov_dist') return `<button class="btn sm" onclick="recommendApp(${a.id})">Recommend</button> <button class="btn sm danger" onclick="rejectApp(${a.id})">Reject</button>`;
@@ -821,15 +839,17 @@ async function delDealer(id){if(!confirm('Remove this dealer?'))return;await api
 async function enter(r){
   $("landing").classList.add("hidden");
   if(r==='producer'){$("login").classList.add("hidden");$("phoneApp").classList.remove("hidden");phoneStep(0);return;}
-  STATE.role=r;STATE.filter='';
-  if(r==='gov_prov'){STATE.scopeKind='prov';STATE.scope='KZN';}
-  else if(r==='gov_dist'){STATE.scopeKind='dist';STATE.scope='uMzinyathi';}
+  STATE.role=r;STATE.filter='';const me=STATE.me;
+  if(r==='gov_prov'){STATE.scopeKind='prov';STATE.scope=(me&&me.role==='provincial'&&me.scope)?me.scope:'KZN';}
+  else if(r==='gov_dist'){STATE.scopeKind='dist';STATE.scope=(me&&me.role==='district'&&me.scope)?me.scope:'uMzinyathi';}
   else {STATE.scopeKind=null;STATE.scope=null;}
   $("login").classList.add("hidden");$("shell").classList.remove("hidden");
   const cfg=NAV[r];
-  const ps=$("portalSel"); if(ps) ps.value=r;
+  const isNat=me&&(me.role==='national'||me.role==='finance'||me.role==='auditor');
+  const ps=$("portalSel"); if(ps){ps.value=r; ps.style.display=isNat?'':'none';}
+  const wb=$("whoBox"); if(wb) wb.innerHTML=me?`👤 ${me.name}<br><small style="opacity:.8">${me.username} · ${cfg.label}${scopeLabel()?' · '+scopeLabel():''}</small>`:'';
   STATE.cfg=cfg; renderNav();
-  $("view").innerHTML='<p style="color:var(--muted)">Loading from database…</p>';
+  $("view").innerHTML='<p style="color:var(--muted)">Loading…</p>';
   await loadAll();
   renderScopeSel();
   STATE.view=cfg.items[0][0];renderView();setActive(STATE.view);
@@ -842,16 +862,23 @@ function renderNav(){const items=STATE.cfg.items;const main=items.slice(0,7),oth
 function setActive(v){document.querySelectorAll('.side a').forEach(a=>a.classList.toggle('active',a.getAttribute('data-v')===v));}
 function toggleOthers(){const b=$('othersBox');if(!b)return;const open=b.style.display!=='none';b.style.display=open?'none':'block';const c=$('othersCaret');if(c)c.textContent=open?'▸':'▾';}
 function toggleSide(){document.body.classList.toggle('side-collapsed');}
-function renderScopeSel(){const s=$("scopeSel");if(!s)return;
-  if(STATE.scopeKind==='prov'){s.classList.remove('hidden');s.innerHTML=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${k===STATE.scope?'selected':''}>📍 ${v}</option>`).join("");}
-  else if(STATE.scopeKind==='dist'){s.classList.remove('hidden');let dists=[...new Set(STATE.producers.map(p=>p.dist).filter(Boolean))].sort();if(STATE.scope&&!dists.includes(STATE.scope))dists.unshift(STATE.scope);s.innerHTML=dists.map(d=>`<option value="${d}" ${d===STATE.scope?'selected':''}>📍 ${d} district</option>`).join("");}
+function renderScopeSel(){const s=$("scopeSel");if(!s)return;const isNat=STATE.me&&(STATE.me.role==='national'||STATE.me.role==='finance'||STATE.me.role==='auditor');
+  if(isNat&&STATE.scopeKind==='prov'){s.classList.remove('hidden');s.innerHTML=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${k===STATE.scope?'selected':''}>📍 ${v}</option>`).join("");}
+  else if(isNat&&STATE.scopeKind==='dist'){s.classList.remove('hidden');let dists=[...new Set(STATE.producers.map(p=>p.dist).filter(Boolean))].sort();if(STATE.scope&&!dists.includes(STATE.scope))dists.unshift(STATE.scope);s.innerHTML=dists.map(d=>`<option value="${d}" ${d===STATE.scope?'selected':''}>📍 ${d} district</option>`).join("");}
   else {s.classList.add('hidden');s.innerHTML='';}}
 function setScope(v){STATE.scope=v;STATE.filter='';renderView();}
 function go(v){STATE.view=v;STATE.filter='';setActive(v);renderView();}
 function renderView(){$("view").innerHTML=(VIEWS[STATE.view]||(()=>"<p>Coming soon</p>"))();$("view").scrollTop=0;}
 function showLogin(){$("landing").classList.add("hidden");$("login").classList.remove("hidden");}
+async function doLogin(){
+  const r=await api('/login','POST',{username:($('u').value||'').trim(),password:($('pw').value||'').trim()});
+  if(r.error){const e=$('loginErr');e.textContent=r.error;e.style.display='block';return;}
+  $('loginErr').style.display='none'; STATE.me=r;
+  const portal={national:'gov',finance:'gov',auditor:'gov',provincial:'gov_prov',district:'gov_dist',dealer:'dealer'}[r.role]||'gov';
+  enter(portal);
+}
 function openProfile(id){STATE.selected=id;STATE.view='profile';renderView();}
-function logout(){["shell","phoneApp","login"].forEach(i=>$(i).classList.add("hidden"));$("landing").classList.remove("hidden");}
+function logout(){STATE.me=null;["shell","phoneApp","login"].forEach(i=>$(i).classList.add("hidden"));$("landing").classList.remove("hidden");}
 
 /* ================= PHONE ================= */
 const phoneSteps=[
@@ -864,6 +891,8 @@ function phoneStep(i){$("pscreen").innerHTML=phoneSteps[i];}
 
 /* ================= INIT ================= */
 buildThemeUI();let sv='agri';try{sv=localStorage.getItem('evTheme')||'agri'}catch(e){}setTheme(sv);
+function updateClock(){const c=$('clock');if(!c)return;const d=new Date();c.textContent=d.toLocaleDateString('en-ZA',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+updateClock();setInterval(updateClock,1000);
 </script>
 </body>
 </html>

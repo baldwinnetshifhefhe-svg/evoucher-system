@@ -71,13 +71,14 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
 
   const iu=db.prepare('INSERT INTO users(username,password,name,role,scope) VALUES(?,?,?,?,?)');
   iu.run("admin","admin123","Motshidisi Sitali","national","All provinces");
-  iu.run("kzn","kzn123","Quinton Nyoka","provincial","KwaZulu-Natal");
+  iu.run("baldwinnetshifhefhe@gmail.com","2026","Baldwin Netshifhefhe","national","All provinces");
+  iu.run("kzn","kzn123","Quinton Nyoka","provincial","KZN");
+  iu.run("fs","fs123","Zinhle Mkhize","provincial","FS");
+  iu.run("umzinyathi","dist123","Bongani Ndlovu","district","uMzinyathi");
+  iu.run("vhembe","dist123","James Ngaka","district","Vhembe");
   iu.run("dealer","dealer123","AgriMart Tshwane","dealer","AgriMart Tshwane");
-  iu.run("zmkhize","demo123","Zinhle Mkhize","provincial","Free State");
-  iu.run("jngaka","demo123","James Ngaka","district","Vhembe (LP)");
-  iu.run("mlekganyane","demo123","Mpho Lekganyane","district","Tshwane (GP)");
-  iu.run("bcoetzer","demo123","Ben Coetzer","finance","Treasury / BAS");
-  iu.run("swilliams","demo123","Sara Williams","auditor","All provinces");
+  iu.run("finance","fin123","Ben Coetzer","finance","Treasury / BAS");
+  iu.run("auditor","audit123","Sara Williams","auditor","All provinces");
 
   const ig=db.prepare('INSERT INTO grievances(ref,who,issue,status,created) VALUES(?,?,?,?,?)');
   ig.run("GR-0041","Pieter van Wyk","Agro-dealer out of stock of fertiliser","Resolved",today());
