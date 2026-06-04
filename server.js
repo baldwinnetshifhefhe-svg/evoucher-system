@@ -15,17 +15,21 @@ const db = new DatabaseSync(DB_PATH);
 db.exec(`
 CREATE TABLE IF NOT EXISTS producers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,status TEXT DEFAULT 'Active',rica TEXT DEFAULT 'Verified',demo TEXT,email TEXT);
 CREATE TABLE IF NOT EXISTS packages(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,val INTEGER,items TEXT,status TEXT DEFAULT 'Active');
-CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,who TEXT,prov TEXT,pkg TEXT,val INTEGER,status TEXT,otp TEXT,dealer TEXT,created TEXT,redeemed_at TEXT);
+CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,who TEXT,prov TEXT,pkg TEXT,val INTEGER,status TEXT,otp TEXT,dealer TEXT,created TEXT,redeemed_at TEXT,expiry TEXT);
 CREATE TABLE IF NOT EXISTS dealers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,contact TEXT,status TEXT DEFAULT 'Active');
 CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT UNIQUE,password TEXT,name TEXT,role TEXT,scope TEXT);
 CREATE TABLE IF NOT EXISTS grievances(id INTEGER PRIMARY KEY AUTOINCREMENT,ref TEXT,who TEXT,issue TEXT,status TEXT DEFAULT 'Open',created TEXT);
 CREATE TABLE IF NOT EXISTS catalogue(id INTEGER PRIMARY KEY AUTOINCREMENT,n TEXT,c TEXT,p INTEGER,s TEXT DEFAULT 'Approved');
 CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,audience TEXT,channel TEXT,subject TEXT,body TEXT,recipients INTEGER);
+CREATE TABLE IF NOT EXISTS applications(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,demo TEXT,status TEXT DEFAULT 'Applied',created TEXT);
+CREATE TABLE IF NOT EXISTS payments(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,supplier TEXT,voucher_no TEXT,who TEXT,amount INTEGER,gateway TEXT,ref TEXT,status TEXT);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,actor TEXT,event TEXT,kind TEXT);
 `);
 
 const now = () => new Date().toLocaleString('en-ZA');
 const today = () => new Date().toLocaleDateString('en-ZA');
+const fyEnd = () => { const d=new Date(); const y=d.getMonth()>=3?d.getFullYear()+1:d.getFullYear(); return y+'-03-31'; }; // SA financial year ends 31 March
+const fyLabel = () => { const d=new Date(); const s=d.getMonth()>=3?d.getFullYear():d.getFullYear()-1; return s+'/'+String(s+1).slice(2); };
 function logAudit(actor,event,kind){ db.prepare('INSERT INTO audit(ts,actor,event,kind) VALUES(?,?,?,?)').run(now(),actor,event,kind); }
 
 // ---- seed (first run only) ------------------------------------------------
@@ -79,9 +83,13 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
   ig.run("GR-0041","Pieter van Wyk","Agro-dealer out of stock of fertiliser","Resolved",today());
   ig.run("GR-0042","Anna Botha","Voucher not received — RICA mismatch","Open",today());
 
-  const iv=db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at) VALUES(?,?,?,?,?,?,?,?,?,?)');
-  iv.run("EV-2026-004471","Thabo Mokoena","FS","Maize starter pack",3200,"Redeemed","1234","AgriMart Tshwane","12 May 2026","12 May 2026");
-  iv.run("EV-2026-004472","Nomsa Dlamini","KZN","Vegetable seed + fertiliser",1850,"Issued","4821","","13 May 2026","");
+  const iv=db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at,expiry) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
+  iv.run("EV-2026-004471","Thabo Mokoena","FS","Maize starter pack",3200,"Redeemed","1234","AgriMart Tshwane","12 May 2026","12 May 2026",fyEnd());
+  iv.run("EV-2026-004472","Nomsa Dlamini","KZN","Vegetable seed + fertiliser",1850,"Issued","4821","","13 May 2026","",fyEnd());
+  db.prepare("INSERT INTO payments(ts,supplier,voucher_no,who,amount,gateway,ref,status) VALUES(?,?,?,?,?,?,?,?)").run("12 May 2026","AgriMart Tshwane","EV-2026-004471","Thabo Mokoena",3200,"PayGate (gateway)","PG-10000001","Paid");
+  const ia=db.prepare("INSERT INTO applications(name,prov,dist,ent,demo,status,created) VALUES(?,?,?,?,?,?,?)");
+  ia.run("Sibusiso Khoza","KZN","uMzinyathi","Maize · 2ha","M·30","Applied",today());
+  ia.run("Refilwe Mahlangu","GP","Tshwane","Vegetables · 1ha","F·27","Applied",today());
   logAudit("System","Database created and seeded","info");
   console.log("✔ Database seeded (first run).");
 }
@@ -171,21 +179,28 @@ const server=http.createServer(async(req,res)=>{
       if(p==='/api/vouchers' && m==='POST'){
         const b=await body(req); const pk=db.prepare('SELECT * FROM packages WHERE name=?').get(b.pkg);
         if(!b.who||!pk)return json(res,400,{error:'producer and package required'});
+        const dup=db.prepare("SELECT 1 FROM vouchers WHERE who=? AND pkg=? AND status='Issued'").get(b.who,pk.name);
+        if(dup) return json(res,400,{error:'Beneficiary already has an active voucher for this package (anti double-dipping)'});
         const no=nextVoucherNo(); const otp=otp4();
-        db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at) VALUES(?,?,?,?,?,?,?,?,?,?)')
-          .run(no,b.who,provOf(b.who),pk.name,pk.val,'Issued',otp,'',today(),'');
-        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — SMS sent with OTP`,'info');
-        return json(res,200,{no,val:pk.val,otp});
+        db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at,expiry) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
+          .run(no,b.who,provOf(b.who),pk.name,pk.val,'Issued',otp,'',today(),'',fyEnd());
+        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — SMS sent with OTP; valid until ${fyEnd()}`,'info');
+        return json(res,200,{no,val:pk.val,otp,expiry:fyEnd()});
       }
       mm=p.match(/^\/api\/vouchers\/(\d+)\/redeem$/);
       if(mm && m==='POST'){
         const b=await body(req); const v=db.prepare('SELECT * FROM vouchers WHERE id=?').get(+mm[1]);
         if(!v)return json(res,404,{error:'voucher not found'});
         if(v.status==='Redeemed')return json(res,400,{error:'already redeemed'});
+        if(v.expiry && new Date() > new Date(v.expiry+'T23:59:59')) return json(res,400,{error:'Voucher expired (financial year ended) — cannot redeem'});
         if(String(b.otp).trim()!==v.otp) return json(res,400,{error:'Wrong OTP — redemption refused'});
-        db.prepare("UPDATE vouchers SET status='Redeemed',dealer=?,redeemed_at=? WHERE id=?").run(b.dealer||'(dealer)',today(),+mm[1]);
-        logAudit(v.who,`Voucher ${v.no} redeemed at ${b.dealer||'dealer'} — OTP verified`,'ok');
-        return json(res,200,{ok:true});
+        const dealer=b.dealer||'(dealer)';
+        db.prepare("UPDATE vouchers SET status='Redeemed',dealer=?,redeemed_at=? WHERE id=?").run(dealer,today(),+mm[1]);
+        // IMMEDIATE payment to the supplier via the payment gateway, the instant redemption is confirmed
+        const ref='PG-'+Date.now().toString().slice(-8);
+        db.prepare("INSERT INTO payments(ts,supplier,voucher_no,who,amount,gateway,ref,status) VALUES(?,?,?,?,?,?,?,?)").run(now(),dealer,v.no,v.who,v.val,'PayGate (gateway)',ref,'Paid');
+        logAudit(v.who,`Voucher ${v.no} redeemed at ${dealer} — OTP verified; immediate payment R${v.val} to supplier via gateway (${ref})`,'ok');
+        return json(res,200,{ok:true,paid:v.val,ref});
       }
 
       // ---- catalogue ----
@@ -198,9 +213,9 @@ const server=http.createServer(async(req,res)=>{
         const b=await body(req); const pk=db.prepare('SELECT * FROM packages WHERE name=?').get(b.pkg);
         if(!pk) return json(res,400,{error:'package required'});
         const list=matchProducers(b); let n=0;
-        const iv=db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at) VALUES(?,?,?,?,?,?,?,?,?,?)');
-        for(const pr of list){ iv.run(nextVoucherNo(), pr.name, pr.prov, pk.name, pk.val, 'Issued', otp4(), '', today(), ''); n++; }
-        logAudit('Admin',`Auto-distributed '${pk.name}' to ${n} beneficiaries by criteria`,'info');
+        const iv=db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at,expiry) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
+        for(const pr of list){ if(db.prepare("SELECT 1 FROM vouchers WHERE who=? AND pkg=? AND status='Issued'").get(pr.name,pk.name)) continue; iv.run(nextVoucherNo(), pr.name, pr.prov, pk.name, pk.val, 'Issued', otp4(), '', today(), '', fyEnd()); n++; }
+        logAudit('Admin',`Auto-distributed '${pk.name}' to ${n} beneficiaries by criteria (valid until ${fyEnd()})`,'info');
         return json(res,200,{count:n});
       }
 
@@ -212,6 +227,17 @@ const server=http.createServer(async(req,res)=>{
         logAudit('Admin',`${b.channel||'Email'} sent to ${recips} beneficiaries: "${b.subject||''}"`,'info');
         return json(res,200,{count:recips});
       }
+
+      // ---- farmer applications (apply -> screen -> approve/reject) ----
+      if(p==='/api/applications' && m==='GET') return json(res,200,db.prepare('SELECT * FROM applications ORDER BY id DESC').all());
+      if(p==='/api/applications' && m==='POST'){const b=await body(req);if(!b.name)return json(res,400,{error:'name required'});db.prepare('INSERT INTO applications(name,prov,dist,ent,demo,status,created) VALUES(?,?,?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.ent||'—',b.demo||'—','Applied',today());logAudit('Farmer',`Application received: ${b.name}`,'wait');return json(res,200,{ok:true});}
+      mm=p.match(/^\/api\/applications\/(\d+)\/approve$/);
+      if(mm && m==='POST'){const ap=db.prepare('SELECT * FROM applications WHERE id=?').get(+mm[1]);if(!ap)return json(res,404,{error:'not found'});db.prepare("UPDATE applications SET status='Approved' WHERE id=?").run(+mm[1]);const email=ap.name.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/ +/g,'.')+'@example.co.za';db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email) VALUES(?,?,?,?,?,?,?,?)').run(ap.name,ap.prov,ap.dist,ap.ent,'Active','Verified',ap.demo,email);logAudit('Admin',`Application approved & added to register: ${ap.name}`,'ok');return json(res,200,{ok:true});}
+      mm=p.match(/^\/api\/applications\/(\d+)\/reject$/);
+      if(mm && m==='POST'){const ap=db.prepare('SELECT name FROM applications WHERE id=?').get(+mm[1]);db.prepare("UPDATE applications SET status='Rejected' WHERE id=?").run(+mm[1]);logAudit('Admin',`Application rejected: ${ap?ap.name:''}`,'no');return json(res,200,{ok:true});}
+
+      // ---- payments (auto-created at redemption, via gateway) ----
+      if(p==='/api/payments' && m==='GET') return json(res,200,db.prepare('SELECT * FROM payments ORDER BY id DESC LIMIT 100').all());
 
       // ---- users (list/add/remove for the Users & Access screen) ----
       if(p==='/api/users' && m==='GET') return json(res,200,db.prepare('SELECT id,username,name,role,scope FROM users ORDER BY id').all());

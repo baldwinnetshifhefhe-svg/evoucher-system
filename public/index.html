@@ -299,7 +299,8 @@ const STATE={role:'gov',scope:null,view:'dash',filter:'',
 const $=id=>document.getElementById(id);
 const money=n=>"R "+Number(n).toLocaleString('en-ZA');
 const ini=n=>n.split(" ").map(x=>x[0]).join("").slice(0,2);
-const sCls=s=>({Active:"ok","Approved":"ok",Redeemed:"ok",Verified:"ok",Issued:"info",Pending:"wait","Pending approval":"wait","Under review":"wait",Suspended:"no",Mismatch:"no"}[s]||"info");
+const sCls=s=>({Active:"ok","Approved":"ok",Redeemed:"ok",Verified:"ok",Paid:"ok",Resolved:"ok",Issued:"info",Applied:"wait",Pending:"wait","Pending approval":"wait","Under review":"wait",Suspended:"no",Mismatch:"no",Expired:"no",Rejected:"no"}[s]||"info");
+function fmtDate(iso){if(!iso)return '—';const d=new Date(iso+'T00:00:00');return isNaN(d)?iso:d.toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'});}
 function scopedProducers(){if(STATE.scopeKind==='prov')return STATE.producers.filter(p=>p.prov===STATE.scope);if(STATE.scopeKind==='dist')return STATE.producers.filter(p=>p.dist===STATE.scope);return STATE.producers;}
 function scopeLabel(){return STATE.scopeKind==='dist'?STATE.scope+" District":STATE.scopeKind==='prov'?PROV[STATE.scope]:"";}
 function sortProducers(list){const s=STATE.sort||'name';const a=[...list];if(s==='name')a.sort((x,y)=>x.name.localeCompare(y.name));else if(s==='name_desc')a.sort((x,y)=>y.name.localeCompare(x.name));else if(s==='prov')a.sort((x,y)=>(PROV[x.prov]||'').localeCompare(PROV[y.prov]||''));else if(s==='status')a.sort((x,y)=>x.status.localeCompare(y.status));return a;}
@@ -400,10 +401,10 @@ async function removeUser(n){const u=STATE.users.find(x=>x.n===n);if(u&&confirm(
 
 /* ================= NAV ================= */
 const NAV={
-  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["about","ℹ️","About this demo"]]},
-  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
-  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
-  dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redeem","✅","Redeemed Inputs"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
+  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["about","ℹ️","About this demo"]]},
+  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
+  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["griev","📣","Grievances"],["about","ℹ️","About this demo"]]},
+  dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redemptions","✅","Redeem Vouchers"],["payments","💳","My Payments"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
   fin:{label:"Financial Institution",sub:"Clearing Officer",items:[["fdash","📊","Dashboard"],["clearing","🏦","Deposit Clearing"],["fpay","💳","Payments"]]},
 };
 
@@ -474,6 +475,7 @@ const VIEWS={
   vouchers:()=>{const V=scopedVouchers();const actives=scopedProducers().filter(p=>p.status==='Active');
     return `${crumb("Voucher Issuance")}<h2 class="page-h">Voucher Issuance</h2>
     <p class="page-sub">Issue a voucher and watch it appear in the register and dashboard</p>
+    <div class="note" style="margin-bottom:14px">📦 These are <b>commodity vouchers</b> — the producer receives a fixed <b>package of inputs (goods)</b>, never cash. Each voucher is <b>valid only until the end of the financial year</b> (${fmtDate(STATE.vouchers.find(v=>v.expiry)?STATE.vouchers.find(v=>v.expiry).expiry:'')}).</div>
     <div class="row"><div class="panel"><h3>Issue a new voucher</h3>
       <div class="field"><label>Producer</label><select id="v_prod">${actives.map(p=>`<option>${p.name}</option>`).join("")}</select></div>
       <div class="field"><label>Subsidy package</label><select id="v_pkg">${STATE.packages.map(p=>`<option>${p.name}</option>`).join("")}</select></div>
@@ -636,6 +638,57 @@ const VIEWS={
         <li>The tender's <b>production</b> system would be built on the required stack (C#/.NET + SQL Server/Oracle).</li>
       </ul></div>`,
 
+  applications:()=>{
+    const A=STATE.applications||[]; const pending=A.filter(a=>a.status==='Applied');
+    const provOpts=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${(k===STATE.scope&&STATE.scopeKind==='prov')?'selected':''}>${v}</option>`).join("");
+    return `${crumb("Applications")}<h2 class="page-h">Farmer Applications</h2>
+    <p class="page-sub">The application → screening → approval flow. Approving adds the farmer to the register.</p>
+    <div class="panel" style="background:linear-gradient(90deg,rgba(46,125,50,.07),transparent)"><b>Flow:</b> 1) Farmer applies → 2) RICA + Register check → 3) Screen against criteria → 4) District recommends → 5) Province / National approves → 6) Voucher issued. <span style="color:var(--muted)">Separation of duties: whoever captures is not who approves.</span></div>
+    <div class="row">
+      <div class="panel"><h3>Capture an application</h3>
+        <div class="field"><label>Full name</label><input id="a_name" placeholder="Farmer name"></div>
+        <div class="row"><div class="field"><label>Province</label><select id="a_prov">${provOpts}</select></div><div class="field"><label>District</label><input id="a_dist" value="${STATE.scopeKind==='dist'?STATE.scope:''}"></div></div>
+        <div class="row"><div class="field"><label>Enterprise</label><input id="a_ent" placeholder="e.g. Maize · 2ha"></div><div class="field"><label>Gender·Age</label><input id="a_demo" placeholder="e.g. F·29"></div></div>
+        <button class="btn" onclick="applyNow()">Submit application</button>
+      </div>
+      <div class="panel"><h3>Applications (${pending.length} pending)</h3><table><thead><tr><th>Name</th><th>Province</th><th>Enterprise</th><th>Status</th><th></th></tr></thead><tbody>
+      ${A.map(a=>`<tr><td>${a.name} <span style="color:var(--muted);font-size:11px">(${a.demo})</span></td><td>${PROV[a.prov]||a.prov}</td><td>${a.ent}</td><td>${pill(a.status)}</td><td>${a.status==='Applied'?`<button class="btn sm" onclick="approveApp(${a.id})">Approve</button> <button class="btn sm danger" onclick="rejectApp(${a.id})">Reject</button>`:''}</td></tr>`).join("")||`<tr><td colspan="5" style="color:var(--muted)">No applications.</td></tr>`}
+      </tbody></table></div>
+    </div>`;
+  },
+
+  redemptions:()=>{
+    const issued=STATE.vouchers.filter(v=>v.status==='Issued'&&!isExpired(v));
+    const expired=STATE.vouchers.filter(v=>isExpired(v));
+    const dealerPick=STATE.role==='dealer'?`<input value="AgriMart Tshwane" disabled style="max-width:260px;padding:9px;border:1px solid var(--line);border-radius:7px">`:`<select id="redeemDealer" style="max-width:260px;padding:9px;border:1px solid var(--line);border-radius:7px">${STATE.dealers.map(d=>`<option>${d.n}</option>`).join("")}</select>`;
+    return `${crumb("Redemptions")}<h2 class="page-h">Redemptions</h2>
+    <p class="page-sub">Redeem a voucher with the producer's OTP — payment to the supplier is raised <b>immediately</b> (ToR 4.9)</p>
+    <div class="note" style="margin-bottom:14px">🔐 In production the OTP is texted to the producer; shown here for testing. ${expired.length?`<b>${expired.length} voucher(s) have expired</b> (financial year) and can no longer be redeemed.`:''}</div>
+    <div class="field" style="max-width:380px"><label>Redeeming at agro-dealer</label>${dealerPick}</div>
+    <div class="panel"><h3>Vouchers awaiting redemption (${issued.length})</h3>
+      <table><thead><tr><th>Voucher No.</th><th>Producer</th><th>Package</th><th>Value</th><th>Valid until</th><th>OTP (demo)</th><th></th></tr></thead><tbody>
+      ${issued.map(v=>`<tr><td>${v.no}</td><td>${v.who}</td><td>${v.pkg}</td><td>${money(v.val)}</td><td>${fmtDate(v.expiry)}</td><td><span style="font-family:Consolas,monospace;background:rgba(0,0,0,.06);padding:1px 6px;border-radius:4px">${v.otp}</span></td><td><button class="btn sm gold" onclick="doRedeem(${v.id},'${v.no}')">Redeem</button></td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">Nothing awaiting redemption — issue or distribute vouchers first.</td></tr>`}
+      </tbody></table></div>`;
+  },
+
+  payments:()=>{
+    const P=STATE.payments||[]; const total=P.reduce((s,x)=>s+x.amount,0);
+    return `${crumb("Payments")}<h2 class="page-h">Payments to Suppliers</h2>
+    <p class="page-sub">Each payment is created <b>automatically the instant a voucher is redeemed</b>, paid to the supplier via the payment gateway</p>
+    <div class="cards">${card("Payments made",P.length)}${card("Total paid",money(total))}${card("Channel","Gateway")}</div>
+    <div class="panel"><h3>Payment register</h3><table><thead><tr><th>When</th><th>Supplier</th><th>For voucher</th><th>Producer</th><th>Amount</th><th>Gateway ref</th><th>Status</th></tr></thead><tbody>
+    ${P.map(x=>`<tr><td>${x.ts}</td><td>${x.supplier}</td><td>${x.voucher_no}</td><td>${x.who}</td><td>${money(x.amount)}</td><td>${x.ref}</td><td>${pill(x.status)}</td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">No payments yet — redeem a voucher to trigger one.</td></tr>`}
+    </tbody></table></div>
+    <div class="note">Money goes government → supplier (the producer receives goods, not cash). The gateway executes the immediate payout; the bank is the supplier's destination account. Real gateway/BAS integration is a production step — see "About this demo".</div>`;
+  },
+
+  controls:()=>`${crumb("Anti-Corruption Controls")}<h2 class="page-h">Anti-Corruption Controls</h2>
+    <p class="page-sub">How the system is designed to block corruption and protect public funds</p>
+    <div class="panel"><table><thead><tr><th>Risk</th><th>Control in this system</th></tr></thead><tbody>
+    ${[["Fake / ghost beneficiaries","RICA name check + Farmer Register match; application and approval done by different roles"],["Official approves their own people","Role-based approval (district recommends, province/national approves); every action audit-logged"],["Double-dipping (many vouchers, one farmer)","System blocks a second active voucher for the same beneficiary + package"],["Diversion / cash-out","Commodity voucher (no cash); redemption limited to approved inputs; OTP proves the real farmer collected"],["Collusion with suppliers","Suppliers must be accredited; payment only for verified redemptions"],["Paying for goods not delivered","Proof-of-redemption (OTP) required before payment; payment auto-generated from redemption"],["Tampering with records","Immutable, time-stamped audit trail of every action"],["Spending past the budget year","Voucher expiry = financial-year end; expired vouchers cannot be redeemed"]].map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td></tr>`).join("")}
+    </tbody></table></div>
+    <div class="note">The core protection: <b>every Rand paid traces to a redeemed voucher, which traces to an approved, RICA-verified beneficiary.</b></div>`,
+
   /* dealer / fin */
   ddash:()=>`${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">AgriMart Tshwane — Dashboard</h2><p class="page-sub">Redemptions and invoicing</p>
     <div class="cards">${card("Redemptions this month","38","")}${card("Value redeemed","R 96 200","")}${card("Invoices outstanding","R 7 300","1 pending")}${card("Paid to date","R 142 800","")}</div>
@@ -650,7 +703,8 @@ const VIEWS={
   fpay:()=>`${crumb("Payments")}<h2 class="page-h">Agro-Dealer Payments</h2><div class="panel">${plain(['Invoice','Dealer','Amount','Status'],[['INV-0098','AgriMart Tshwane','R 7 300',pill('Pending')],['INV-0097','AgriMart Tshwane','R 18 450',pill('Approved').replace('Approved','Paid')]])}</div>`,
 };
 function plain(head,rows){return `<table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>"<tr>"+r.map(c=>`<td>${c}</td>`).join("")+"</tr>").join("")}</tbody></table>`;}
-function voucherTable(V){return `<table><thead><tr><th>Voucher No.</th><th>Producer</th><th>Package</th><th>Value</th><th>Status</th></tr></thead><tbody>${V.map(v=>`<tr><td>${v.no}</td><td>${v.who}</td><td>${v.pkg}</td><td>${money(v.val)}</td><td>${pill(v.status)}</td></tr>`).join("")}</tbody></table>`;}
+function isExpired(v){return v.expiry&&v.status==='Issued'&&new Date()>new Date(v.expiry+'T23:59:59');}
+function voucherTable(V){return `<table><thead><tr><th>Voucher No.</th><th>Producer</th><th>Package (commodity)</th><th>Value</th><th>Valid until</th><th>Status</th></tr></thead><tbody>${V.map(v=>`<tr><td>${v.no}</td><td>${v.who}</td><td>${v.pkg}</td><td>${money(v.val)}</td><td>${fmtDate(v.expiry)}</td><td>${pill(isExpired(v)?'Expired':v.status)}</td></tr>`).join("")}</tbody></table>`;}
 
 /* ----- export builders ----- */
 function buildBenefLines(){return scopedProducers().map((p,i)=>`${i+1}. ${p.name}  |  ${PROV[p.prov]}  |  ${p.ent}  |  ${p.status}  |  RICA: ${p.rica}`);}
@@ -667,8 +721,8 @@ const ROLE_LABEL={national:"National Superuser",provincial:"Provincial Admin",di
 const ROLE_LEVEL={national:"National",provincial:"Provincial",district:"District",extension:"District",finance:"National",auditor:"National",dealer:"Dealer"};
 const LABEL2TOKEN={"National Superuser":"national","Provincial Admin":"provincial","District Officer":"district","Extension Officer":"extension","Auditor (read-only)":"auditor"};
 async function loadAll(){
-  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit,messages]=await Promise.all([
-    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit'),api('/messages')]);
+  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit,messages,applications,payments]=await Promise.all([
+    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit'),api('/messages'),api('/applications'),api('/payments')]);
   STATE.producers=producers;
   STATE.vouchers=vouchers;
   STATE.packages=packages;
@@ -678,6 +732,8 @@ async function loadAll(){
   STATE.grievances=grievances;
   STATE.audit=audit.map(a=>({t:a.ts,a:a.actor,e:a.event,k:a.kind,c:a.kind}));
   STATE.messages=messages;
+  STATE.applications=applications;
+  STATE.payments=payments;
 }
 async function reload(){ await loadAll(); renderView(); }
 function openAddGrievance(){modal("Log grievance",`<div class="field"><label>Producer</label><input id="g_who" placeholder="Producer name"></div><div class="field"><label>Issue</label><input id="g_issue" placeholder="Describe the problem"></div>`,"Save",async()=>{const issue=$('g_issue').value.trim();if(!issue){toast('Describe the issue');return;}const r=await api('/grievances','POST',{who:$('g_who').value,issue});closeModal();await reload();toast('📣 Logged: '+r.ref);});}
@@ -690,6 +746,11 @@ async function distributeNow(){const q=distCrit();q.pkg=val('t_pkg');const n=mat
 function audCrit(){const a=val('c_aud');const q={};if(a==='F')q.gender='F';else if(a==='youth')q.youth=true;else if(a&&a.indexOf('prov:')===0)q.prov=a.slice(5);if(STATE.scopeKind==='prov')q.prov=STATE.scope;if(STATE.scopeKind==='dist')q.dist=STATE.scope;return q;}
 function previewComms(){const n=matchClient(audCrit()).length;const pv=document.getElementById('commsPreview');if(pv)pv.innerHTML=`<b>${n}</b> recipients.`;}
 async function sendComms(){const q=audCrit();q.channel=val('c_chan');q.subject=val('c_subj');q.body=val('c_body');const sel=document.getElementById('c_aud');q.audience=sel?sel.selectedOptions[0].text:'All';const n=matchClient(q).length;if(!n)return toast('No recipients match');if(!q.subject)return toast('Enter a subject');const r=await api('/messages','POST',q);await reload();toast('✉️ '+r.count+' '+q.channel+'(s) sent to beneficiaries');}
+/* ---- redemption (triggers immediate supplier payment) + applications ---- */
+async function doRedeem(id,no){const otp=prompt('Enter the OTP for voucher '+no+' (shown in the table for this demo):');if(otp===null)return;const dealer=STATE.role==='dealer'?'AgriMart Tshwane':(document.getElementById('redeemDealer')||{}).value;const r=await api('/vouchers/'+id+'/redeem','POST',{otp,dealer});if(r.error)return toast('❌ '+r.error);await reload();toast('✅ '+no+' redeemed — R'+r.paid+' paid to supplier instantly ('+r.ref+')');}
+async function applyNow(){const name=(val('a_name')||'').trim();if(!name)return toast('Enter a name');await api('/applications','POST',{name,prov:val('a_prov'),dist:val('a_dist'),ent:val('a_ent'),demo:val('a_demo')});await reload();toast('📝 Application submitted');}
+async function approveApp(id){if(!confirm('Approve this application and add the farmer to the register?'))return;await api('/applications/'+id+'/approve','POST');await reload();toast('✅ Approved & added to register');}
+async function rejectApp(id){if(!confirm('Reject this application?'))return;await api('/applications/'+id+'/reject','POST');await reload();toast('Application rejected');}
 
 /* ================= CONTROL ================= */
 async function enter(r){
