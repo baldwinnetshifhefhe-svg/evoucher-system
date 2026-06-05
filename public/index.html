@@ -484,11 +484,13 @@ const VIEWS={
     <button class="btn" onclick='exportPdf("M&E Summary Report",buildMandeLines())'>⬇ Export report (PDF)</button>
     <button class="btn alt" onclick='exportMandeCsv()'>⬇ Export data (Excel)</button>`;},
 
-  benef:()=>{const list=sortProducers(flt(scopedProducers(),['name','dist','ent','demo','email']));
-    const sortSel=`<select onchange="STATE.sort=this.value;renderView()" style="padding:8px;border:1px solid var(--line);border-radius:7px"><option value="name"${(STATE.sort||'name')==='name'?' selected':''}>Sort: Name A–Z</option><option value="name_desc"${STATE.sort==='name_desc'?' selected':''}>Name Z–A</option><option value="prov"${STATE.sort==='prov'?' selected':''}>Province</option><option value="status"${STATE.sort==='status'?' selected':''}>Status</option></select>`;
+  benef:()=>{let base=scopedProducers(); if(STATE.filterProv) base=base.filter(p=>p.prov===STATE.filterProv); const list=sortProducers(flt(base,['name','dist','ent','demo','email']));
+    const selStyle="padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)";
+    const provSel=STATE.scopeKind?'':`<select onchange="STATE.filterProv=this.value;renderView()" style="${selStyle}"><option value="">Filter: All provinces</option>${Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${STATE.filterProv===k?'selected':''}>${v} only</option>`).join('')}</select>`;
+    const sortSel=`<select onchange="STATE.sort=this.value;renderView()" style="${selStyle}"><option value="name"${(STATE.sort||'name')==='name'?' selected':''}>Sort: Name A–Z</option><option value="name_desc"${STATE.sort==='name_desc'?' selected':''}>Name Z–A</option><option value="prov"${STATE.sort==='prov'?' selected':''}>Province</option><option value="status"${STATE.sort==='status'?' selected':''}>Status</option></select>`;
     return `${crumb("Beneficiaries")}<h2 class="page-h">Beneficiaries — Farmer Register</h2>
-    <p class="page-sub">${list.length} shown${scopeLabel()?" in "+scopeLabel():""} · RICA-verified · saved in the database</p>
-    ${searchBar(`${sortSel}<button class="btn" onclick="openAddBeneficiary()">+ Add beneficiary</button><button class="btn alt" onclick='exportPdf("Beneficiary List",buildBenefLines())'>⬇ PDF</button><button class="btn alt" onclick='exportCsv("beneficiaries",["Name","Province","District","Enterprise","Status","RICA","Email"],scopedProducers().map(p=>[p.name,PROV[p.prov]||p.prov,p.dist,p.ent,p.status,p.rica,p.email||""]))'>⬇ Excel</button>`)}
+    <p class="page-sub">${list.length} shown${scopeLabel()?" in "+scopeLabel():STATE.filterProv?" in "+PROV[STATE.filterProv]:""} · RICA-verified · saved in the database</p>
+    ${searchBar(`${provSel}${sortSel}<button class="btn" onclick="openAddBeneficiary()">+ Add beneficiary</button><button class="btn alt" onclick='exportPdf("Beneficiary List",buildBenefLines())'>⬇ PDF</button><button class="btn alt" onclick='exportCsv("beneficiaries",["Name","Province","District","Enterprise","Status","RICA","Email"],scopedProducers().map(p=>[p.name,PROV[p.prov]||p.prov,p.dist,p.ent,p.status,p.rica,p.email||""]))'>⬇ Excel</button>`)}
     <div class="panel"><table><thead><tr><th>Producer</th><th>Province</th><th>District</th><th>Enterprise</th><th>Status</th><th>RICA</th><th>Actions</th></tr></thead><tbody>
     ${list.map(p=>`<tr><td><span class="avatar">${ini(p.name)}</span><a style="cursor:pointer;color:var(--accent);font-weight:600" onclick="openProfile(${p.id})">${p.name}</a> <span style="color:var(--muted);font-size:11px">(${p.demo})</span><br><span style="color:var(--muted);font-size:11px">${p.email||''}</span></td><td>${PROV[p.prov]}</td><td>${p.dist}</td><td>${p.ent}</td><td>${pill(p.status)}</td><td>${pill(p.rica)}</td>
       <td style="white-space:nowrap"><button class="btn sm alt" onclick="toggleSuspend(${p.id})">${p.status==='Suspended'?'Reactivate':'Suspend'}</button> <button class="btn sm danger" onclick="removeBeneficiary(${p.id})">🗑</button></td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">No matches.</td></tr>`}
@@ -925,7 +927,7 @@ function renderScopeSel(){const s=$("scopeSel");if(!s)return;const isNat=STATE.m
   else if(isNat&&STATE.scopeKind==='dist'){s.classList.remove('hidden');let dists=[...new Set(STATE.producers.map(p=>p.dist).filter(Boolean))].sort();if(STATE.scope&&!dists.includes(STATE.scope))dists.unshift(STATE.scope);s.innerHTML=dists.map(d=>`<option value="${d}" ${d===STATE.scope?'selected':''}>📍 ${d} district</option>`).join("");}
   else {s.classList.add('hidden');s.innerHTML='';}}
 function setScope(v){STATE.scope=v;STATE.filter='';renderView();}
-function go(v){STATE.view=v;STATE.filter='';setActive(v);renderView();}
+function go(v){STATE.view=v;STATE.filter='';STATE.filterProv='';setActive(v);renderView();}
 function renderView(){$("view").innerHTML=(VIEWS[STATE.view]||(()=>"<p>Coming soon</p>"))();$("view").scrollTop=0;}
 function showLogin(){$("landing").classList.add("hidden");$("login").classList.remove("hidden");}
 /* ---- feedback / ratings popup ---- */
