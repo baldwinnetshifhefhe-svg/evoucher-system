@@ -92,7 +92,7 @@
   .tabbar{display:flex;border-top:1px solid #dfe5df}.tabbar div{flex:1;text-align:center;padding:10px;font-size:11px;color:#5e6b5e}.tabbar div.on{color:var(--green);font-weight:700}
   /* modal + toast */
   .ovl{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100}
-  .mcard{background:var(--card);color:var(--ink);border-radius:12px;padding:22px;width:440px;max-width:92vw;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .mcard{background:var(--card);color:var(--ink);border-radius:12px;padding:22px;width:440px;max-width:92vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.3)}
   .mcard h3{margin:0 0 14px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:11px 18px;border-radius:24px;font-size:13px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:.3s}
   .toast.show{opacity:1;bottom:34px}
@@ -209,7 +209,8 @@
     <div class="crest"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#1b5e20"/><circle cx="13" cy="13" r="3.4" fill="#ffd24d"/><path d="M28 13 q5 2 5 9 q-6 0 -5 -9 z" fill="#7cc47f"/><g stroke="#ffd24d" stroke-width="2" fill="none" stroke-linecap="round"><line x1="20" y1="32" x2="20" y2="17"/><path d="M20 20 l-5 -3 M20 24 l-5 -3 M20 28 l-5 -3 M20 20 l5 -3 M20 24 l5 -3 M20 28 l5 -3"/></g></svg></div>
     <h1>e-PSS<small>e-Producer Support System</small></h1>
     <div style="display:flex;align-items:center;gap:8px;margin-left:14px;border-left:1px solid rgba(255,255,255,.25);padding-left:14px">
-      <img id="govEmblem" src="emblem.png" alt="" style="height:36px;width:auto" onerror="this.style.display='none'">
+      <img id="govEmblem" src="emblem.png" alt="" style="height:38px;width:auto" onerror="this.style.display='none';var ph=document.getElementById('emblemPH');if(ph)ph.style.display='flex'" onload="var ph=document.getElementById('emblemPH');if(ph)ph.style.display='none'">
+      <span id="emblemPH" style="display:flex;align-items:center" title="Placeholder — replace with the official emblem (add public/emblem.png)"><svg viewBox="0 0 40 46" style="height:38px;width:auto"><path d="M4 5 h32 v21 q0 12 -16 18 q-16 -6 -16 -18 z" fill="#0f5132" stroke="#ffd24d" stroke-width="2"/><circle cx="20" cy="13" r="3" fill="#ffd24d"/><g stroke="#ffd24d" stroke-width="1.6" fill="none" stroke-linecap="round"><line x1="20" y1="34" x2="20" y2="22"/><path d="M20 25 l-4 -2 M20 29 l-4 -2 M20 25 l4 -2 M20 29 l4 -2"/></g></svg></span>
       <div style="font-size:12px;line-height:1.2">Department of Agriculture<br><small style="opacity:.8">Republic of South Africa</small></div>
     </div>
     <div class="spacer"></div>
@@ -862,7 +863,7 @@ async function enter(r){
   const cfg=NAV[r];
   const isNat=me&&(me.role==='national'||me.role==='finance'||me.role==='auditor');
   const ps=$("portalSel"); if(ps){ps.value=r; ps.style.display=isNat?'':'none';}
-  const wb=$("whoBox"); if(wb) wb.innerHTML=me?`👤 ${me.name}<br><small style="opacity:.8">${me.username} · ${cfg.label}${scopeLabel()?' · '+scopeLabel():''}</small>`:'';
+  const wb=$("whoBox"); if(wb) wb.innerHTML=me?`👤 ${me.name}<br><small style="opacity:.9"><span style="color:#ffe08a;font-weight:600">${me.username}</span> · ${cfg.label}${scopeLabel()?' · '+scopeLabel():''}</small>`:'';
   STATE.cfg=cfg; renderNav();
   $("view").innerHTML='<p style="color:var(--muted)">Loading…</p>';
   await loadAll();
@@ -889,7 +890,7 @@ function showLogin(){$("landing").classList.add("hidden");$("login").classList.r
 function fbStars(n){let s='';for(let i=1;i<=5;i++)s+=`<span onclick="setStars(${i})" style="cursor:pointer">${i<=n?'★':'☆'}</span>`;return s;}
 function setStars(n){window._fb=n;const el=$('fbStars');if(el)el.innerHTML=fbStars(n);}
 function showFeedback(){
-  if(document.querySelector('.ovl'))return; // don't stack on another dialog
+  if(document.querySelector('.ovl'))return false; // don't stack on another dialog
   window._fb=0;
   const roles=['National officer','Provincial officer','District officer','Extension officer','Agro-dealer / supplier','Producer / farmer','Other'];
   const mine=STATE.me?({national:'National officer',provincial:'Provincial officer',district:'District officer',dealer:'Agro-dealer / supplier',finance:'National officer',auditor:'National officer'}[STATE.me.role]||'Other'):'Other';
@@ -900,6 +901,7 @@ function showFeedback(){
     <div class="field" style="margin-top:14px"><label>Your role (who is rating)</label><select id="fb_role">${opts}</select></div>
     <div class="field"><label>What is most useful, or what should improve?</label><input id="fb_comment" placeholder="Optional comment"></div>`,
     "Submit feedback", submitFeedback);
+  return true;
 }
 async function submitFeedback(){
   if(!window._fb){toast('Please tap a star rating first');return;}
@@ -929,7 +931,7 @@ function phoneStep(i){$("pscreen").innerHTML=phoneSteps[i];}
 buildThemeUI();let sv='agri';try{sv=localStorage.getItem('evTheme')||'agri'}catch(e){}setTheme(sv);
 function updateClock(){const c=$('clock');if(!c)return;const d=new Date();c.textContent=d.toLocaleDateString('en-ZA',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
 updateClock();setInterval(updateClock,1000);
-setInterval(()=>{ if(STATE.me) showFeedback(); }, 600000); // feedback box every 10 minutes while signed in
+let _fbShown=0;setInterval(()=>{ if(STATE.me && _fbShown<3){ if(showFeedback()) _fbShown++; } }, 900000); // feedback box up to 3x per session, every 15 min
 </script>
 </body>
 </html>
