@@ -2,3 +2,5 @@ node_modules/
 evoucher.db
 *.db
 *.log
+
+public/index_files/
