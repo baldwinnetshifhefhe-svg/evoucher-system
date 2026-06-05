@@ -909,7 +909,7 @@ async function enter(r){
   const cfg=NAV[r];
   const isNat=me&&(me.role==='national'||me.role==='finance'||me.role==='auditor');
   const ps=$("portalSel"); if(ps){ps.value=r; ps.style.display=isNat?'':'none';}
-  const wb=$("whoBox"); if(wb) wb.innerHTML=me?`👤 ${me.name}<br><small style="opacity:.9"><span style="color:#ffe08a;font-weight:600">${me.username}</span> · ${cfg.label}${scopeLabel()?' · '+scopeLabel():''}</small>`:'';
+  const wb=$("whoBox"); if(wb) wb.innerHTML=me?`👤 ${me.name}<br><small style="opacity:.9"><span style="color:#ffe08a;font-weight:600">${me.username}</span></small>`:'';
   STATE.cfg=cfg; renderNav();
   $("view").innerHTML='<p style="color:var(--muted)">Loading…</p>';
   await loadAll();
