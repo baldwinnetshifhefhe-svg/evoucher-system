@@ -37,15 +37,28 @@ function logAudit(actor,event,kind){ db.prepare('INSERT INTO audit(ts,actor,even
 if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
   const ip=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo) VALUES(?,?,?,?,?,?,?)');
   [["Thabo Mokoena","FS","Thaba Nchu","Maize · 4ha","Active","Verified","M·41"],
+   ["Johannes Maritz","FS","Mangaung","Maize · 9ha","Active","Verified","M·58"],
+   ["Palesa Mofokeng","FS","Mangaung","Beans · 3ha","Active","Verified","F·33"],
    ["Nomsa Dlamini","KZN","uMzinyathi","Vegetables · 1.5ha","Active","Verified","F·29"],
-   ["Pieter van Wyk","WC","Swartland","Wheat · 12ha","Pending","Verified","M·53"],
-   ["Lerato Sithole","GP","Tshwane","Poultry · 800 birds","Active","Verified","F·34"],
-   ["Sipho Ndlovu","MP","Nkomazi","Sugarcane · 6ha","Active","Verified","M·47"],
-   ["Anna Botha","NW","Mahikeng","Cattle · 40 head","Suspended","Mismatch","F·61"],
+   ["Thandeka Mthembu","KZN","uMzinyathi","Maize · 2ha","Active","Verified","F·41"],
+   ["Sipho Buthelezi","KZN","uMzinyathi","Goats · 35 head","Active","Verified","M·52"],
+   ["Lungile Zwane","KZN","uMzinyathi","Vegetables · 1ha","Pending","Verified","F·27"],
    ["Zanele Khumalo","KZN","Zululand","Vegetables · 2ha","Active","Verified","F·26"],
-   ["Dineo Phiri","LP","Vhembe","Tomatoes · 3ha","Active","Verified","F·31"],
    ["Bongani Zulu","KZN","King Cetshwayo","Goats · 60 head","Active","Verified","M·44"],
+   ["Pieter van Wyk","WC","Swartland","Wheat · 12ha","Pending","Verified","M·53"],
+   ["Annelize Booysen","WC","Swartland","Wheat · 8ha","Active","Verified","F·36"],
+   ["Lerato Sithole","GP","Tshwane","Poultry · 800 birds","Active","Verified","F·34"],
+   ["Kabelo Maluleke","GP","Tshwane","Vegetables · 2ha","Active","Verified","M·40"],
+   ["Fatima Patel","GP","Ekurhuleni","Poultry · 1200 birds","Active","Verified","F·48"],
+   ["Sipho Ndlovu","MP","Nkomazi","Sugarcane · 6ha","Active","Verified","M·47"],
+   ["Grace Nkosi","MP","Ehlanzeni","Vegetables · 1ha","Active","Verified","F·27"],
+   ["Tshepo Molefe","NW","Bojanala","Sunflower · 15ha","Active","Verified","M·36"],
+   ["Anna Botha","NW","Mahikeng","Cattle · 40 head","Suspended","Mismatch","F·61"],
+   ["Dineo Phiri","LP","Vhembe","Tomatoes · 3ha","Active","Verified","F·31"],
+   ["Mulalo Ramavhoya","LP","Vhembe","Maize · 4ha","Active","Verified","M·38"],
+   ["Khathutshelo Nemukula","LP","Vhembe","Tomatoes · 2ha","Active","Verified","F·45"],
    ["Andile Mbeki","EC","OR Tambo","Maize · 2.5ha","Active","Verified","M·33"],
+   ["Maria Adams","NC","Frances Baard","Grapes · 5ha","Pending","Verified","F·39"],
   ].forEach(r=>ip.run(...r));
   db.prepare("UPDATE producers SET email = lower(replace(name,' ','.'))||'@example.co.za' WHERE email IS NULL").run();
 
@@ -60,7 +73,8 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
   [["AgriMart Tshwane","GP","Tshwane","D. Naidoo","Active"],
    ["FarmCo Nkomazi","MP","Nkomazi","S. Mahlangu","Active"],
    ["KZN Agri Supplies","KZN","Zululand","B. Cele","Active"],
-   ["Vhembe Farm Centre","LP","Vhembe","R. Netshi","Pending"],
+   ["uMzinyathi Agri Co-op","KZN","uMzinyathi","M. Ndlovu","Active"],
+   ["Vhembe Farm Centre","LP","Vhembe","R. Netshi","Active"],
   ].forEach(r=>idl.run(...r));
 
   const ic=db.prepare('INSERT INTO catalogue(n,c,p,s) VALUES(?,?,?,?)');

@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>e-PSS — e-Producer Support System | Department of Agriculture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{--green:#1b5e20;--green2:#2e7d32;--gold:#c79a00;--bg:#f4f6f4;--ink:#1f2a1f;--muted:#5e6b5e;--line:#dfe5df;--card:#fff;--side:#fff;--top:#1b5e20;--topink:#fff;--accent:#2e7d32}
   *{box-sizing:border-box}
@@ -129,6 +131,28 @@
   .tl li:before{content:"";position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:var(--accent)}
   .tl .tt{font-size:12px;color:var(--muted)}
   .appfoot{padding:14px 26px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;background:var(--side)}
+  /* ===== design uplift (world-class polish) ===== */
+  body{font-family:'Inter','Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .topbar{box-shadow:0 2px 12px rgba(0,0,0,.14)}
+  .card{border-radius:13px;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:transform .12s ease,box-shadow .12s ease}
+  .card:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.10)}
+  .card .k{text-transform:uppercase;letter-spacing:.5px;font-weight:600;font-size:11px}
+  .card .v{font-size:29px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px;margin-top:6px}
+  .panel{border-radius:13px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .panel h3{font-weight:700;letter-spacing:-.2px}
+  .page-h{letter-spacing:-.4px;font-weight:800}
+  .btn{box-shadow:0 1px 2px rgba(0,0,0,.14);transition:filter .12s ease,transform .05s ease}
+  .btn:active{transform:translateY(1px)}
+  .side{padding-top:14px}
+  .side .grp{font-weight:700}
+  .side a{border-radius:0 24px 24px 0;margin-right:12px;transition:background .12s ease}
+  th{font-size:11px;letter-spacing:.6px}
+  tr{transition:background .1s ease}
+  .pill{box-shadow:0 1px 1px rgba(0,0,0,.04)}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:rgba(130,140,130,.45);border-radius:8px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(130,140,130,.7);background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
 </style>
 </head>
 <body>
@@ -753,9 +777,10 @@ const VIEWS={
   },
 
   /* dealer / fin */
-  ddash:()=>`${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">AgriMart Tshwane — Dashboard</h2><p class="page-sub">Redemptions and invoicing</p>
-    <div class="cards">${card("Redemptions this month","38","")}${card("Value redeemed","R 96 200","")}${card("Invoices outstanding","R 7 300","1 pending")}${card("Paid to date","R 142 800","")}</div>
-    <div class="panel"><h3>Recent redemptions</h3>${plain(['Voucher No.','Producer','Package','Value','Date','Status'],[['EV-2026-004471','Thabo Mokoena','Maize starter pack','R 3 200','12 May',pill('Redeemed')],['EV-2026-004478','Andile Mbeki','Maize starter pack','R 3 200','15 May',pill('Redeemed')]])}</div>`,
+  ddash:()=>{const me='AgriMart Tshwane';const pays=(STATE.payments||[]).filter(p=>p.supplier===me);const red=(STATE.vouchers||[]).filter(v=>v.status==='Redeemed'&&v.dealer===me);const val=pays.reduce((s,x)=>s+x.amount,0);
+    return `${crumb("Agro-Dealer Dashboard")}<h2 class="page-h">${me} — Dashboard</h2><p class="page-sub">Your redemptions and payments (live data)</p>
+    <div class="cards">${card("Redemptions",red.length,"","#4aa3ff")}${card("Value redeemed",money(val),"","#26c281")}${card("Payments received",pays.length,"","#e3b341")}${card("Channel","Gateway","","#ff8a4a")}</div>
+    <div class="panel"><h3>Your redemptions</h3>${plain(['Voucher No.','Producer','Package','Value','Date','Status'],red.map(v=>[v.no,v.who,v.pkg,money(v.val),v.redeemed_at||'—',pill('Redeemed')]))||''}${red.length?'':'<p style="color:var(--muted);font-size:13px">No redemptions yet for this dealer.</p>'}</div>`;},
   redeem:()=>`${crumb("Redeemed Inputs")}<h2 class="page-h">Redeemed Inputs</h2><div class="panel">${plain(['Voucher No.','Producer','Package','Value','Date','Status'],[['EV-2026-004471','Thabo Mokoena','Maize starter pack','R 3 200','12 May',pill('Redeemed')],['EV-2026-004476','Dineo Phiri','Tomato seedling pack','R 2 050','14 May',pill('Redeemed')]])}</div>`,
   inv:()=>`${crumb("Invoices")}<h2 class="page-h">Invoices</h2><button class="btn" style="margin-bottom:14px" onclick="toast('Prototype: invoice generated from redeemed vouchers')">+ Generate invoice</button>
     <div class="panel">${plain(['Invoice','Date','Amount','Linked to','Status'],[['INV-0098','13 May','R 7 300','2 vouchers',pill('Pending')],['INV-0097','30 Apr','R 18 450','6 vouchers',pill('Approved').replace('Approved','Paid')]])}</div>`,
@@ -856,7 +881,7 @@ async function delDealer(id){if(!confirm('Remove this dealer?'))return;await api
 /* ================= CONTROL ================= */
 async function enter(r){
   $("landing").classList.add("hidden");
-  if(r==='producer'){$("login").classList.add("hidden");$("phoneApp").classList.remove("hidden");phoneStep(0);return;}
+  if(r==='producer'){$("login").classList.add("hidden");$("phoneApp").classList.remove("hidden");startProducerApp();return;}
   STATE.role=r;STATE.filter='';const me=STATE.me;
   if(r==='gov_prov'){STATE.scopeKind='prov';STATE.scope=(me&&me.role==='provincial'&&me.scope)?me.scope:'KZN';}
   else if(r==='gov_dist'){STATE.scopeKind='dist';STATE.scope=(me&&me.role==='district'&&me.scope)?me.scope:'uMzinyathi';}
@@ -921,13 +946,29 @@ function openProfile(id){STATE.selected=id;STATE.view='profile';renderView();}
 function logout(){STATE.me=null;["shell","phoneApp","login"].forEach(i=>$(i).classList.add("hidden"));$("landing").classList.remove("hidden");}
 
 /* ================= PHONE ================= */
-const phoneSteps=[
-  `<div class="pbar">📱 My Vouchers</div><div class="pbody"><div class="voucher"><div class="vn">Active voucher</div><div class="vv">EV-2026-004472</div><div style="margin-top:6px;font-size:13px">Vegetable seed + fertiliser · <b>R 1 850</b></div></div><p style="font-size:13px;color:#5e6b5e">Take this voucher to a participating agro-dealer to redeem your inputs.</p><button class="btn" style="width:100%" onclick="phoneStep(1)">Redeem now →</button><p style="font-size:12px;color:#5e6b5e;margin-top:14px">📨 Advisory: ☀️ Dry spell expected in uMzinyathi next week — delay transplanting.</p></div><div class="tabbar"><div class="on">🎟️ Vouchers</div><div>📨 Messages</div><div>👤 Profile</div></div>`,
-  `<div class="pbar">✅ Redeem Voucher</div><div class="pbody"><div class="field"><label>Agro-dealer</label><select><option>AgriMart Tshwane</option><option>KZN Agri Supplies</option></select></div><div class="field"><label>Inputs (approved catalogue)</label><select><option>Vegetable seed kit — R430</option><option>LAN fertiliser (50kg) — R620</option></select></div><div class="note" style="margin-bottom:14px">An OTP will be sent to your RICA-registered number to confirm it's really you.</div><button class="btn" style="width:100%" onclick="phoneStep(2)">Send OTP →</button><button class="btn alt" style="width:100%;margin-top:8px" onclick="phoneStep(0)">Cancel</button></div>`,
-  `<div class="pbar">🔐 Enter OTP</div><div class="pbody"><p style="font-size:13px;color:#5e6b5e">We sent a 4-digit code to •••• 4821</p><div class="otp"><input value="4"><input value="9"><input value="0"><input value="2"></div><p style="font-size:12px;color:#5e6b5e;text-align:center">Works offline too — syncs once back online.</p><button class="btn" style="width:100%" onclick="phoneStep(3)">Confirm redemption →</button></div>`,
-  `<div class="pbar">🎉 Redeemed</div><div class="pbody" style="text-align:center"><div style="font-size:54px;margin:10px 0">✅</div><h3 style="margin:0">Redemption successful</h3><p style="font-size:13px;color:#5e6b5e">Voucher <b>EV-2026-004472</b> redeemed at <b>AgriMart Tshwane</b> for <b>R 1 850</b>.</p><div class="voucher" style="text-align:left"><div class="vn">Proof of redemption</div><div class="vv" style="font-size:14px">REF: RDM-2026-88143</div><div style="font-size:12px;margin-top:4px">14 May 2026 · OTP verified</div></div><button class="btn" style="width:100%" onclick="phoneStep(0)">Back to my vouchers</button></div>`
-];
-function phoneStep(i){$("pscreen").innerHTML=phoneSteps[i];}
+async function startProducerApp(){
+  try{const [vs,dl]=await Promise.all([api('/vouchers'),api('/dealers')]);STATE.vouchers=vs;STATE.dealers=dl.map(d=>({n:d.name,s:d.status}));}catch(e){}
+  window._pv=(STATE.vouchers||[]).find(v=>v.status==='Issued')||null;
+  phoneStep(0);
+}
+function phoneStep(i){
+  const v=window._pv;
+  if(!v){ $("pscreen").innerHTML=`<div class="pbar">📱 My Vouchers</div><div class="pbody"><p style="font-size:13px;color:#5e6b5e">You have no active voucher right now. When the government issues you one, it will appear here.</p><button class="btn alt" style="width:100%" onclick="logout()">← Back</button></div>`; return; }
+  const dealers=(STATE.dealers||[]).filter(d=>d.s==='Active');
+  const screens=[
+    `<div class="pbar">📱 My Vouchers</div><div class="pbody"><div class="voucher"><div class="vn">Active voucher · ${v.who}</div><div class="vv">${v.no}</div><div style="margin-top:6px;font-size:13px">${v.pkg} · <b>${money(v.val)}</b></div></div><p style="font-size:13px;color:#5e6b5e">Take this voucher to an accredited agro-dealer to redeem your inputs.</p><button class="btn" style="width:100%" onclick="phoneStep(1)">Redeem now →</button><p style="font-size:12px;color:#5e6b5e;margin-top:14px">📨 Advisory: ☀️ Dry spell expected next week — plan irrigation.</p></div><div class="tabbar"><div class="on">🎟️ Vouchers</div><div>📨 Messages</div><div>👤 Profile</div></div>`,
+    `<div class="pbar">✅ Redeem Voucher</div><div class="pbody"><div class="field"><label>Accredited agro-dealer</label><select id="pv_dealer">${dealers.map(d=>`<option>${d.n}</option>`).join('')||'<option>(no accredited dealer)</option>'}</select></div><div class="field"><label>Package</label><input value="${v.pkg}" disabled></div><div class="note" style="margin-bottom:14px">An OTP will be sent to your RICA-registered number to confirm it's really you.</div><button class="btn" style="width:100%" onclick="phoneStep(2)">Send OTP →</button><button class="btn alt" style="width:100%;margin-top:8px" onclick="phoneStep(0)">Cancel</button></div>`,
+    `<div class="pbar">🔐 Enter OTP</div><div class="pbody"><p style="font-size:13px;color:#5e6b5e">We sent a 4-digit code to your phone (demo shows it: <b>${v.otp}</b>)</p><div class="otp"><input maxlength="1" value="${v.otp[0]}"><input maxlength="1" value="${v.otp[1]}"><input maxlength="1" value="${v.otp[2]}"><input maxlength="1" value="${v.otp[3]}"></div><p style="font-size:12px;color:#5e6b5e;text-align:center">Works offline too — syncs once back online.</p><button class="btn" style="width:100%" onclick="phoneRedeem()">Confirm redemption →</button></div>`,
+    `<div class="pbar">🎉 Redeemed</div><div class="pbody" style="text-align:center"><div style="font-size:54px;margin:10px 0">✅</div><h3 style="margin:0">Redemption successful</h3><p style="font-size:13px;color:#5e6b5e">Voucher <b>${v.no}</b> redeemed for <b>${money(v.val)}</b>. The supplier is paid immediately — and this shows in the government system.</p><div class="voucher" style="text-align:left"><div class="vn">Proof of redemption</div><div class="vv" style="font-size:14px">${v.no}</div><div style="font-size:12px;margin-top:4px">OTP verified · linked to e-PSS</div></div><button class="btn" style="width:100%" onclick="logout()">Done</button></div>`
+  ];
+  $("pscreen").innerHTML=screens[i];
+}
+async function phoneRedeem(){
+  const v=window._pv; const dealer=(document.getElementById('pv_dealer')||{}).value||'AgriMart Tshwane';
+  const r=await api('/vouchers/'+v.id+'/redeem','POST',{otp:v.otp,dealer});
+  if(r.error){toast('❌ '+r.error);return;}
+  phoneStep(3);
+}
 
 /* ================= INIT ================= */
 buildThemeUI();let sv='agri';try{sv=localStorage.getItem('evTheme')||'agri'}catch(e){}setTheme(sv);
