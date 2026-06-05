@@ -366,6 +366,7 @@ function flt(arr,fields){const f=STATE.filter.trim().toLowerCase();if(!f)return 
 function pill(s){return `<span class="pill ${sCls(s)}">${s}</span>`;}
 function card(k,v,extra,col){return `<div class="card"${col?` style="border-top:3px solid ${col}"`:''}><div class="k">${k}</div><div class="v"${col?` style="color:${col}"`:''}>${v} ${extra?`<small>${extra}</small>`:""}</div></div>`}
 function crumb(t){return `<div class="crumbs">Home / ${scopeLabel()?scopeLabel()+" / ":""}${t}</div>`}
+function provFilterSel(){return STATE.scopeKind?'':`<select onchange="STATE.filterProv=this.value;renderView()" style="padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink)"><option value="">Filter: All provinces</option>${Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${STATE.filterProv===k?'selected':''}>${v} only</option>`).join('')}</select>`;}
 function barChart(items){const max=Math.max(...items.map(i=>i[1]))||1;return items.map(([l,v])=>`<div style="margin-bottom:11px"><div class="legend"><span>${l}</span><span>${v}</span></div><div class="bar"><span style="width:${Math.round(v/max*100)}%"></span></div></div>`).join("");}
 function searchBar(extra){return `<div class="toolbar"><input class="search" placeholder="🔍 Type to filter…" value="${STATE.filter}" oninput="applyFilter(this.value)">${extra||""}</div>`;}
 function applyFilter(v){STATE.filter=v;renderView();const s=document.querySelector('.search');if(s){s.focus();s.value=v;s.setSelectionRange(v.length,v.length);}}
@@ -476,9 +477,10 @@ const VIEWS={
       <div class="panel"><h3>Vouchers by status</h3>${barChart([["Redeemed",V.filter(v=>v.status==='Redeemed').length],["Issued",V.filter(v=>v.status==='Issued').length],["Pending",V.filter(v=>v.status.startsWith('Pending')).length]])}</div></div>
     <div class="panel"><h3>Recent vouchers</h3>${voucherTable(V.slice(0,6))}</div>`;},
 
-  mande:()=>{const P=scopedProducers();const f=P.filter(p=>p.demo[0]==='F').length,m=P.length-f;const youth=P.filter(p=>+p.demo.split('·')[1]<=35).length;
+  mande:()=>{let P=scopedProducers(); if(STATE.filterProv) P=P.filter(p=>p.prov===STATE.filterProv); const f=P.filter(p=>p.demo[0]==='F').length,m=P.length-f;const youth=P.filter(p=>+p.demo.split('·')[1]<=35).length;
     return `${crumb("Monitoring & Evaluation")}<h2 class="page-h">Monitoring &amp; Evaluation</h2>
-    <p class="page-sub">Disaggregated reporting · figures update live as beneficiaries change</p>
+    <p class="page-sub">Disaggregated reporting${STATE.filterProv?' · '+PROV[STATE.filterProv]:''} · figures update live as beneficiaries change</p>
+    ${provFilterSel()?`<div class="toolbar">${provFilterSel()}</div>`:''}
     <div class="cards">${card("Female producers",f,P.length?Math.round(f/P.length*100)+"%":"","#ff6b9d")}${card("Male producers",m,"","#4aa3ff")}${card("Youth (≤35)",youth,"","#26c281")}${card("Total in scope",P.length,"","#e3b341")}</div>
     <div class="row"><div class="panel"><h3>By gender</h3>${barChart([["Female",f],["Male",m]])}</div><div class="panel"><h3>By age group</h3>${barChart([["18–35 (Youth)",youth],["36+",P.length-youth]])}</div></div>
     <button class="btn" onclick='exportPdf("M&E Summary Report",buildMandeLines())'>⬇ Export report (PDF)</button>
@@ -531,7 +533,7 @@ const VIEWS={
     ${flt(STATE.packages,['name','items']).map(p=>`<tr><td><b>${p.name}</b></td><td>${p.items}</td><td>${money(p.val)}</td><td>${pill(p.status)}</td><td><button class="btn sm danger" onclick="removePackage('${p.name.replace(/'/g,"\\'")}')">🗑</button></td></tr>`).join("")}
     </tbody></table></div>`,
 
-  vouchers:()=>{const V=scopedVouchers();const actives=scopedProducers().filter(p=>p.status==='Active');
+  vouchers:()=>{let V=scopedVouchers(); if(STATE.filterProv) V=V.filter(v=>v.prov===STATE.filterProv); const actives=scopedProducers().filter(p=>p.status==='Active');
     return `${crumb("Voucher Issuance")}<h2 class="page-h">Voucher Issuance</h2>
     <p class="page-sub">Issue a voucher and watch it appear in the register and dashboard</p>
     <div class="note" style="margin-bottom:14px">📦 These are <b>commodity vouchers</b> — the producer receives a fixed <b>package of inputs (goods)</b>, never cash. Each voucher is <b>valid only until the end of the financial year</b> (${fmtDate(STATE.vouchers.find(v=>v.expiry)?STATE.vouchers.find(v=>v.expiry).expiry:'')}).</div>
@@ -541,7 +543,7 @@ const VIEWS={
       <div class="field"><label>Programme</label><select><option>Comprehensive Producer Development Support</option><option>Ilima/Letsema</option></select></div>
       <button class="btn gold" onclick="issueVoucher()">Issue voucher &amp; send SMS →</button>
       <p class="note" style="margin-top:12px">On issue, the system generates a unique voucher number, SMSes the producer, and logs it to the audit trail.</p></div>
-      <div class="panel"><h3>Voucher register (${V.length})</h3>${voucherTable(V)}</div></div>`;},
+      <div class="panel"><h3>Voucher register (${V.length})</h3>${provFilterSel()?`<div class="toolbar">${provFilterSel()}</div>`:''}${voucherTable(V)}</div></div>`;},
 
   cat:()=>`${crumb("Input Catalogue")}<h2 class="page-h">Input Catalogue Management</h2>
     <p class="page-sub">Only approved inputs can be redeemed (ToR 4.4)</p>
@@ -740,11 +742,11 @@ const VIEWS={
   },
 
   payments:()=>{
-    const P=STATE.payments||[]; const total=P.reduce((s,x)=>s+x.amount,0);
+    let P=STATE.payments||[]; if(STATE.filterProv) P=P.filter(x=>provOf(x.who)===STATE.filterProv); const total=P.reduce((s,x)=>s+x.amount,0);
     return `${crumb("Payments")}<h2 class="page-h">Payments to Suppliers</h2>
     <p class="page-sub">Each payment is created <b>automatically the instant a voucher is redeemed</b>, paid to the supplier via the payment gateway</p>
     <div class="cards">${card("Payments made",P.length,"","#4aa3ff")}${card("Total paid",money(total),"","#26c281")}${card("Channel","Gateway","","#e3b341")}</div>
-    <div class="panel"><h3>Payment register</h3><table><thead><tr><th>When</th><th>Supplier</th><th>For voucher</th><th>Producer</th><th>Amount</th><th>Gateway ref</th><th>Status</th></tr></thead><tbody>
+    <div class="panel"><h3>Payment register</h3>${provFilterSel()?`<div class="toolbar">${provFilterSel()}</div>`:''}<table><thead><tr><th>When</th><th>Supplier</th><th>For voucher</th><th>Producer</th><th>Amount</th><th>Gateway ref</th><th>Status</th></tr></thead><tbody>
     ${P.map(x=>`<tr><td>${x.ts}</td><td>${x.supplier}</td><td>${x.voucher_no}</td><td>${x.who}</td><td>${money(x.amount)}</td><td>${x.ref}</td><td>${pill(x.status)}</td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">No payments yet — redeem a voucher to trigger one.</td></tr>`}
     </tbody></table></div>
     <div class="note">Money goes government → supplier (the producer receives goods, not cash). The gateway executes the immediate payout; the bank is the supplier's destination account. Real gateway/BAS integration is a production step — see "About this demo".</div>`;
