@@ -409,12 +409,14 @@ function openAddBeneficiary(){
     <div class="field"><label>District</label><input id="b_dist" placeholder="District"></div></div>
     <div class="field"><label>Enterprise</label><input id="b_ent" placeholder="e.g. Maize · 3ha"></div>
     <div class="row"><div class="field"><label>Gender·Age</label><input id="b_demo" placeholder="e.g. M·38"></div>
-    <div class="field"><label>RICA status</label><select id="b_rica"><option>Verified</option><option>Mismatch</option></select></div></div>
-    <div class="note">In the real system, RICA status is checked automatically against the cellphone number (ToR 4.14).</div>`,
+    <div class="field"><label>Cellphone</label><input id="b_cell" placeholder="e.g. 082 000 0000"></div></div>
+    <div class="note">RICA status is checked <b>automatically</b> via the RICA integration when you save (ToR 4.14).</div>`,
     "Add beneficiary",async()=>{
       const name=$('b_name').value.trim();if(!name){toast('Enter a name');return;}
-      await api('/producers','POST',{name,prov:$('b_prov').value,dist:$('b_dist').value,ent:$('b_ent').value,rica:$('b_rica').value,demo:$('b_demo').value});
-      closeModal();await reload();toast('✅ Saved to database: '+name);
+      const rica=await api('/integrations/rica?name='+encodeURIComponent(name)+'&cell='+encodeURIComponent($('b_cell').value||''));
+      await api('/producers','POST',{name,prov:$('b_prov').value,dist:$('b_dist').value,ent:$('b_ent').value,rica:rica.verified?'Verified':'Mismatch',demo:$('b_demo').value});
+      closeModal();await reload();
+      toast(rica.verified?('✅ Saved · RICA verified: '+name):('⚠️ Saved · RICA MISMATCH for '+name+' — flagged'));
     });
 }
 async function removeBeneficiary(id){const p=STATE.producers.find(x=>x.id===id);if(!p)return;if(confirm('Remove beneficiary "'+p.name+'"? This deletes it from the database.')){await api('/producers/'+id,'DELETE');await reload();toast('🗑 Removed: '+p.name);}}
