@@ -14,6 +14,7 @@ const db = new DatabaseSync(DB_PATH);
 // ---- tables ---------------------------------------------------------------
 db.exec(`
 CREATE TABLE IF NOT EXISTS producers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,status TEXT DEFAULT 'Active',rica TEXT DEFAULT 'Verified',demo TEXT,email TEXT);
+CREATE TABLE IF NOT EXISTS farmer_register(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,ent TEXT,demo TEXT,rica TEXT,enrolled INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS packages(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,val INTEGER,items TEXT,status TEXT DEFAULT 'Active');
 CREATE TABLE IF NOT EXISTS vouchers(id INTEGER PRIMARY KEY AUTOINCREMENT,no TEXT,who TEXT,prov TEXT,pkg TEXT,val INTEGER,status TEXT,otp TEXT,dealer TEXT,created TEXT,redeemed_at TEXT,expiry TEXT);
 CREATE TABLE IF NOT EXISTS dealers(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,prov TEXT,dist TEXT,contact TEXT,status TEXT DEFAULT 'Active',company_reg TEXT,vat TEXT,csd TEXT,bank TEXT,address TEXT,email TEXT,phone TEXT,catalogue TEXT);
@@ -60,6 +61,20 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
    ["Andile Mbeki","EC","OR Tambo","Maize · 2.5ha","Active","Verified","M·33"],
    ["Maria Adams","NC","Frances Baard","Grapes · 5ha","Pending","Verified","F·39"],
   ].forEach(r=>ip.run(...r));
+  // ---- generate more beneficiaries to reach 50 (deterministic, from SA name pools) ----
+  const FN={M:["Sipho","Thabo","Kabelo","Mpho","Andile","Bongani","Lwazi","Tshepo","Themba","Vusi","Katlego","Lehlohonolo","Mandla","Sizwe","Tumelo"],F:["Nomsa","Thandeka","Lerato","Palesa","Zanele","Dineo","Grace","Naledi","Boitumelo","Refilwe","Nokuthula","Ayanda","Precious","Khanyisile","Lindiwe"]};
+  const SUR=["Mokoena","Dlamini","Nkosi","Zulu","Mahlangu","Khumalo","Molefe","Sithole","Ndlovu","Mthembu","Maluleke","Buthelezi","Phiri","Mokwena","Ngcobo","Nene","Mabaso","Radebe","Sibeko","Tshabalala"];
+  const PD={FS:["Mangaung","Thaba Nchu"],KZN:["uMzinyathi","Zululand","King Cetshwayo"],WC:["Swartland","Cape Winelands"],GP:["Tshwane","Ekurhuleni"],MP:["Nkomazi","Ehlanzeni"],NW:["Bojanala","Mahikeng"],LP:["Vhembe","Capricorn"],EC:["OR Tambo","Amathole"],NC:["Frances Baard","ZF Mgcawu"]};
+  const ENT=["Maize · 3ha","Maize · 6ha","Vegetables · 1ha","Vegetables · 2ha","Poultry · 500 birds","Goats · 40 head","Sugarcane · 5ha","Tomatoes · 2ha","Sunflower · 10ha","Cattle · 25 head","Beans · 2ha","Wheat · 7ha"];
+  const PK=Object.keys(PD); let _r=20260605; const rnd=()=>{_r=(_r*1103515245+12345)&0x7fffffff;return _r/0x7fffffff;}; const pick=a=>a[Math.floor(rnd()*a.length)];
+  while(db.prepare('SELECT COUNT(*) c FROM producers').get().c < 50){
+    const g=rnd()<0.5?'F':'M'; const pk=pick(PK);
+    ip.run(pick(FN[g])+' '+pick(SUR), pk, pick(PD[pk]), pick(ENT), rnd()<0.9?'Active':'Pending', 'Verified', g+'·'+(20+Math.floor(rnd()*45)));
+  }
+  // ---- seed the central FARMER REGISTER (enrolled = all current beneficiaries; plus a few awaiting enrolment) ----
+  const ifr=db.prepare('INSERT INTO farmer_register(name,prov,dist,ent,demo,rica,enrolled) VALUES(?,?,?,?,?,?,?)');
+  db.prepare('SELECT name,prov,dist,ent,demo,rica FROM producers').all().forEach(p=>ifr.run(p.name,p.prov,p.dist,p.ent,p.demo,p.rica,1));
+  for(let i=0;i<8;i++){const g=rnd()<0.5?'F':'M';const pk=pick(PK);ifr.run(pick(FN[g])+' '+pick(SUR),pk,pick(PD[pk]),pick(ENT),g+'·'+(20+Math.floor(rnd()*45)),'Verified',0);}
   db.prepare("UPDATE producers SET email = lower(replace(name,' ','.'))||'@example.co.za' WHERE email IS NULL").run();
 
   const ipk=db.prepare('INSERT INTO packages(name,val,items,status) VALUES(?,?,?,?)');
@@ -270,6 +285,30 @@ const server=http.createServer(async(req,res)=>{
       // ---- user feedback / ratings ----
       if(p==='/api/feedback' && m==='GET') return json(res,200,db.prepare('SELECT * FROM feedback ORDER BY id DESC LIMIT 100').all());
       if(p==='/api/feedback' && m==='POST'){const b=await body(req);db.prepare('INSERT INTO feedback(ts,role,rating,comment,by) VALUES(?,?,?,?,?)').run(now(),b.role||'—',+b.rating||0,b.comment||'',b.by||'');logAudit(b.by||'User',`Feedback: ${+b.rating||0}★ (${b.role||''})`,'info');return json(res,200,{ok:true});}
+
+      // ================= SIMULATED INTEGRATIONS (mock APIs mirroring the real systems) =================
+      if(p==='/api/integrations/status' && m==='GET') return json(res,200,[
+        {system:'Farmer / Producer Register',detail:db.prepare('SELECT COUNT(*) c FROM farmer_register').get().c+' farmers'},
+        {system:'Decision Support System (DSS)',detail:'weather & advisory feed'},
+        {system:'Extension Directory',detail:'officer contacts'},
+        {system:'RICA verification',detail:'cellphone-to-name check'},
+        {system:'Payment gateway',detail:'supplier payouts'},
+        {system:'BAS (Basic Accounting System)',detail:'government disbursement'},
+        {system:'SMS gateway',detail:'OTP & notifications'}]);
+      if(p==='/api/integrations/farmer-register' && m==='GET') return json(res,200,db.prepare('SELECT * FROM farmer_register ORDER BY enrolled, name').all());
+      if(p==='/api/integrations/farmer-register/sync' && m==='POST'){
+        const pend=db.prepare('SELECT * FROM farmer_register WHERE enrolled=0').all(); let n=0;
+        const ip2=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email) VALUES(?,?,?,?,?,?,?,?)');
+        for(const f of pend){ if(!db.prepare('SELECT 1 FROM producers WHERE name=?').get(f.name)){ ip2.run(f.name,f.prov,f.dist,f.ent,'Active',f.rica||'Verified',f.demo,(f.name.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/ +/g,'.')+'@example.co.za')); n++; } db.prepare('UPDATE farmer_register SET enrolled=1 WHERE id=?').run(f.id); }
+        logAudit('System',`Synced ${n} farmers from the Farmer Register into beneficiaries`,'info');
+        return json(res,200,{synced:n});
+      }
+      if(p==='/api/integrations/dss' && m==='GET'){const prov=url.searchParams.get('prov')||'national';const lv=['Low','Watch','Medium','High'];const i=[...prov].reduce((a,c)=>a+c.charCodeAt(0),0)%lv.length;return json(res,200,{prov,risk:lv[i],rainfall_mm:i*7+3,advisory:i>=2?'Dry spell expected — advise water-wise inputs':'Conditions favourable for planting',source:'DSS (simulated)'});}
+      if(p==='/api/integrations/rica' && m==='GET'){const name=url.searchParams.get('name')||'';const ok=!/botha/i.test(name);return json(res,200,{name,verified:ok,result:ok?"Number registered in the producer's name":'Name mismatch — manual check required',source:'RICA (simulated)'});}
+      if(p==='/api/integrations/extension-directory' && m==='GET') return json(res,200,[{name:'M. Sitali',role:'Extension Officer',prov:'KZN',cell:'082 000 0001'},{name:'J. Ngaka',role:'Extension Officer',prov:'LP',cell:'082 000 0002'},{name:'T. Mothibi',role:'Extension Officer',prov:'MP',cell:'082 000 0003'}]);
+      if(p==='/api/integrations/sms' && m==='POST'){const b=await body(req);return json(res,200,{sent:true,to:b.to||'•••• ••••',ref:'SMS-'+Date.now().toString().slice(-7),source:'SMS gateway (simulated)'});}
+      if(p==='/api/integrations/bas' && m==='POST'){const b=await body(req);return json(res,200,{ref:'BAS-'+Date.now().toString().slice(-8),amount:b.amount||0,status:'Disbursement raised',source:'BAS (simulated)'});}
+      if(p==='/api/integrations/gateway' && m==='POST'){const b=await body(req);return json(res,200,{ref:'PG-'+Date.now().toString().slice(-8),amount:b.amount||0,status:'Paid',source:'Payment gateway (simulated)'});}
 
       // ---- users (list/add/remove for the Users & Access screen) ----
       if(p==='/api/users' && m==='GET') return json(res,200,db.prepare('SELECT id,username,name,role,scope FROM users ORDER BY id').all());

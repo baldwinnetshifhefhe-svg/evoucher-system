@@ -456,9 +456,9 @@ async function removeUser(n){const u=STATE.users.find(x=>x.n===n);if(u&&confirm(
 
 /* ================= NAV ================= */
 const NAV={
-  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["feedback","⭐","Ratings & Feedback"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
-  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["feedback","⭐","Ratings & Feedback"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
-  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["griev","📣","Grievances"],["feedback","⭐","Ratings & Feedback"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
+  gov:{label:"National Superuser",sub:"National",items:[["dash","📊","Dashboard"],["mande","📈","Monitoring & Evaluation"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries / Register"],["packages","🧩","Subsidy Packages"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["cat","📦","Input Catalogue"],["suppliers","🏪","Suppliers Directory"],["users","👥","Users & Access"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["coverage","🧭","Requirements Coverage"],["links","🔗","System Links"],["integrations","🔌","Integrations"],["feedback","⭐","Ratings & Feedback"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
+  gov_prov:{label:"Provincial Admin",sub:"KwaZulu-Natal",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["reports","📑","Reports & Export"],["audit","🔒","Audit Trail"],["griev","📣","Grievances"],["integrations","🔌","Integrations"],["feedback","⭐","Ratings & Feedback"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
+  gov_dist:{label:"District Officer",sub:"uMzinyathi District (KZN)",items:[["dash","📊","Dashboard"],["applications","📝","Applications"],["benef","👨‍🌾","Beneficiaries"],["vouchers","🎟️","Voucher Issuance"],["distribute","🎯","Targeted Distribution"],["redemptions","✅","Redemptions"],["payments","💳","Payments"],["comms","✉️","Communications"],["mande","📈","Monitoring & Evaluation"],["controls","🛡️","Anti-Corruption Controls"],["griev","📣","Grievances"],["integrations","🔌","Integrations"],["feedback","⭐","Ratings & Feedback"],["faqs","❓","FAQs"],["about","ℹ️","About this demo"]]},
   dealer:{label:"Agro-Dealer / Supplier",sub:"AgriMart Tshwane",items:[["ddash","📊","Dashboard"],["redemptions","✅","Redeem Vouchers"],["payments","💳","My Payments"],["inv","🧾","Invoices"],["dcat","📦","Approved Inputs"]]},
   fin:{label:"Financial Institution",sub:"Clearing Officer",items:[["fdash","📊","Dashboard"],["clearing","🏦","Deposit Clearing"],["fpay","💳","Payments"]]},
 };
@@ -762,6 +762,18 @@ const VIEWS={
     </tbody></table></div>`;
   },
 
+  integrations:()=>{const reg=STATE.register||[];const enrolled=reg.filter(f=>f.enrolled).length;const pend=reg.length-enrolled;
+    const sys=[['Farmer / Producer Register','farmer-register','The central register of farmers — beneficiaries are drawn from here'],['Decision Support System (DSS)','dss','Weather, risk and advisory feed'],['Extension Directory','extension-directory','Extension & advisory officer contacts'],['RICA verification','rica','Confirms a cellphone is registered in the producer\'s name'],['Payment gateway','gateway','Immediate payout to suppliers'],['BAS (Basic Accounting System)','bas','Government disbursement & reconciliation'],['SMS gateway','sms','Voucher numbers, OTPs & notifications']];
+    return `${crumb("Integrations")}<h2 class="page-h">System Integrations</h2>
+    <p class="page-sub">Live connections to the Farmer Register and other government systems — <b>simulated APIs that mirror the real ones</b></p>
+    <div class="cards">${card("Farmers in register",reg.length,"","#4aa3ff")}${card("Enrolled beneficiaries",enrolled,"","#26c281")}${card("Awaiting enrolment",pend,"","#e3b341")}</div>
+    <div style="margin-bottom:14px"><button class="btn" onclick="syncRegister()">⟳ Sync new farmers from the Register</button></div>
+    <div class="panel"><h3>Connected systems</h3><table><thead><tr><th>System</th><th>Status</th><th>Live response</th><th></th></tr></thead><tbody>
+    ${sys.map(s=>`<tr><td><b>${s[0]}</b><br><span style="font-size:11px;color:var(--muted)">${s[2]}</span></td><td><span class="pill ok">● Connected</span></td><td style="font-size:11px;color:var(--muted);max-width:340px;word-break:break-word" id="int_${s[1]}">—</td><td><button class="btn sm alt" onclick="testIntegration('${s[1]}')">Test</button></td></tr>`).join("")}
+    </tbody></table>
+    <div class="note" style="margin-top:12px">These integration endpoints are <b>simulated</b> and return data in the same shape the real systems would. In production they connect to the actual Farmer Register, DSS, BAS, RICA, gateway and SMS provider (see "About this demo").</div></div>`;
+  },
+
   faqs:()=>{const qa=[
     ["What is e-PSS?","The e-Producer Support System — government distributes subsidised farming inputs to producers through secure commodity vouchers, tracked end-to-end."],
     ["Is the voucher money?","No. It is a commodity voucher: the producer receives a fixed package of inputs (goods), never cash."],
@@ -809,8 +821,8 @@ const ROLE_LABEL={national:"National Superuser",provincial:"Provincial Admin",di
 const ROLE_LEVEL={national:"National",provincial:"Provincial",district:"District",extension:"District",finance:"National",auditor:"National",dealer:"Dealer"};
 const LABEL2TOKEN={"National Superuser":"national","Provincial Admin":"provincial","District Officer":"district","Extension Officer":"extension","Auditor (read-only)":"auditor"};
 async function loadAll(){
-  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit,messages,applications,payments,feedback]=await Promise.all([
-    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit'),api('/messages'),api('/applications'),api('/payments'),api('/feedback')]);
+  const [producers,vouchers,packages,catalogue,dealers,users,grievances,audit,messages,applications,payments,feedback,register]=await Promise.all([
+    api('/producers'),api('/vouchers'),api('/packages'),api('/catalogue'),api('/dealers'),api('/users'),api('/grievances'),api('/audit'),api('/messages'),api('/applications'),api('/payments'),api('/feedback'),api('/integrations/farmer-register')]);
   STATE.producers=producers;
   STATE.vouchers=vouchers;
   STATE.packages=packages;
@@ -823,6 +835,7 @@ async function loadAll(){
   STATE.applications=applications;
   STATE.payments=payments;
   STATE.feedback=feedback;
+  STATE.register=register;
 }
 async function reload(){ await loadAll(); renderView(); }
 function openAddGrievance(){modal("Log grievance",`<div class="field"><label>Producer</label><input id="g_who" placeholder="Producer name"></div><div class="field"><label>Issue</label><input id="g_issue" placeholder="Describe the problem"></div>`,"Save",async()=>{const issue=$('g_issue').value.trim();if(!issue){toast('Describe the issue');return;}const r=await api('/grievances','POST',{who:$('g_who').value,issue});closeModal();await reload();toast('📣 Logged: '+r.ref);});}
@@ -935,6 +948,21 @@ async function submitFeedback(){
   await api('/feedback','POST',{rating:window._fb,role:$('fb_role').value,comment:$('fb_comment').value,by:meLabel()});
   closeModal(); if(STATE.me) await reload(); toast('🙏 Thank you for your feedback!');
 }
+/* ---- integrations (simulated external systems) ---- */
+async function testIntegration(key){let r,txt='error';
+  try{
+    if(key==='farmer-register'){const a=await api('/integrations/farmer-register');txt=a.length+' farmers in the register';}
+    else if(key==='dss'){r=await api('/integrations/dss?prov=KZN');txt='KZN risk: '+r.risk+' · '+r.advisory;}
+    else if(key==='rica'){r=await api('/integrations/rica?name=Nomsa%20Dlamini');txt='Nomsa Dlamini → '+(r.verified?'verified':'mismatch');}
+    else if(key==='extension-directory'){const a=await api('/integrations/extension-directory');txt=a.length+' officers: '+a.map(o=>o.name).join(', ');}
+    else if(key==='sms'){r=await api('/integrations/sms','POST',{to:'0820000000'});txt='SMS sent · '+r.ref;}
+    else if(key==='bas'){r=await api('/integrations/bas','POST',{amount:3200});txt=r.status+' · '+r.ref;}
+    else if(key==='gateway'){r=await api('/integrations/gateway','POST',{amount:3200});txt=r.status+' · '+r.ref;}
+  }catch(e){}
+  const el=document.getElementById('int_'+key); if(el) el.textContent=txt;
+  toast('✅ '+key+' responded');
+}
+async function syncRegister(){const r=await api('/integrations/farmer-register/sync','POST');await reload();toast('⟳ Synced '+r.synced+' new farmer(s) from the Register');}
 async function doLogin(){
   const r=await api('/login','POST',{username:($('u').value||'').trim(),password:($('pw').value||'').trim()});
   if(r.error){const e=$('loginErr');e.textContent=r.error;e.style.display='block';return;}
