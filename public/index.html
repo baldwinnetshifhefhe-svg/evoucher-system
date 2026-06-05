@@ -339,7 +339,7 @@ function provOf(name){const p=STATE.producers.find(x=>x.name===name);return p?p.
 function scopedVouchers(){if(!STATE.scopeKind)return STATE.vouchers;const names=new Set(scopedProducers().map(p=>p.name));return STATE.vouchers.filter(v=>names.has(v.who));}
 function flt(arr,fields){const f=STATE.filter.trim().toLowerCase();if(!f)return arr;return arr.filter(o=>fields.some(k=>String(o[k]||"").toLowerCase().includes(f)));}
 function pill(s){return `<span class="pill ${sCls(s)}">${s}</span>`;}
-function card(k,v,extra){return `<div class="card"><div class="k">${k}</div><div class="v">${v} ${extra?`<small>${extra}</small>`:""}</div></div>`}
+function card(k,v,extra,col){return `<div class="card"${col?` style="border-top:3px solid ${col}"`:''}><div class="k">${k}</div><div class="v"${col?` style="color:${col}"`:''}>${v} ${extra?`<small>${extra}</small>`:""}</div></div>`}
 function crumb(t){return `<div class="crumbs">Home / ${scopeLabel()?scopeLabel()+" / ":""}${t}</div>`}
 function barChart(items){const max=Math.max(...items.map(i=>i[1]))||1;return items.map(([l,v])=>`<div style="margin-bottom:11px"><div class="legend"><span>${l}</span><span>${v}</span></div><div class="bar"><span style="width:${Math.round(v/max*100)}%"></span></div></div>`).join("");}
 function searchBar(extra){return `<div class="toolbar"><input class="search" placeholder="🔍 Type to filter…" value="${STATE.filter}" oninput="applyFilter(this.value)">${extra||""}</div>`;}
@@ -444,7 +444,7 @@ const VIEWS={
     const provCounts=Object.keys(PROV).map(k=>[PROV[k],STATE.producers.filter(p=>p.prov===k).length]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
     return `${crumb("Dashboard")}<h2 class="page-h">${scopeLabel()?scopeLabel()+" Dashboard":"National Dashboard"}</h2>
     <p class="page-sub">${scopeLabel()?"Producer support in "+scopeLabel():"Producer support across all nine provinces"} · 2026 season · <b>live database</b></p>
-    <div class="cards">${card("Producers supported",P.length,"")}${card("Vouchers issued",V.length,"")}${card("Vouchers redeemed",red,V.length?Math.round(red/V.length*100)+"%":"")}${card("Value distributed",money(val),"")}</div>
+    <div class="cards">${card("Producers supported",P.length,"","#4aa3ff")}${card("Vouchers issued",V.length,"","#e3b341")}${card("Vouchers redeemed",red,V.length?Math.round(red/V.length*100)+"%":"","#26c281")}${card("Value distributed",money(val),"","#ff8a4a")}</div>
     <div class="row"><div class="panel"><h3>${STATE.scope?"Producers by status":"Producers by province"}</h3>${barChart(STATE.scope?[["Active",P.filter(p=>p.status==='Active').length],["Pending",P.filter(p=>p.status==='Pending').length],["Suspended",P.filter(p=>p.status==='Suspended').length]]:provCounts)}</div>
       <div class="panel"><h3>Vouchers by status</h3>${barChart([["Redeemed",V.filter(v=>v.status==='Redeemed').length],["Issued",V.filter(v=>v.status==='Issued').length],["Pending",V.filter(v=>v.status.startsWith('Pending')).length]])}</div></div>
     <div class="panel"><h3>Recent vouchers</h3>${voucherTable(V.slice(0,6))}</div>`;},
@@ -452,7 +452,7 @@ const VIEWS={
   mande:()=>{const P=scopedProducers();const f=P.filter(p=>p.demo[0]==='F').length,m=P.length-f;const youth=P.filter(p=>+p.demo.split('·')[1]<=35).length;
     return `${crumb("Monitoring & Evaluation")}<h2 class="page-h">Monitoring &amp; Evaluation</h2>
     <p class="page-sub">Disaggregated reporting · figures update live as beneficiaries change</p>
-    <div class="cards">${card("Female producers",f,P.length?Math.round(f/P.length*100)+"%":"")}${card("Male producers",m,"")}${card("Youth (≤35)",youth,"")}${card("Total in scope",P.length,"")}</div>
+    <div class="cards">${card("Female producers",f,P.length?Math.round(f/P.length*100)+"%":"","#ff6b9d")}${card("Male producers",m,"","#4aa3ff")}${card("Youth (≤35)",youth,"","#26c281")}${card("Total in scope",P.length,"","#e3b341")}</div>
     <div class="row"><div class="panel"><h3>By gender</h3>${barChart([["Female",f],["Male",m]])}</div><div class="panel"><h3>By age group</h3>${barChart([["18–35 (Youth)",youth],["36+",P.length-youth]])}</div></div>
     <button class="btn" onclick='exportPdf("M&E Summary Report",buildMandeLines())'>⬇ Export report (PDF)</button>
     <button class="btn alt" onclick='exportMandeCsv()'>⬇ Export data (Excel)</button>`;},
@@ -714,7 +714,7 @@ const VIEWS={
     const P=STATE.payments||[]; const total=P.reduce((s,x)=>s+x.amount,0);
     return `${crumb("Payments")}<h2 class="page-h">Payments to Suppliers</h2>
     <p class="page-sub">Each payment is created <b>automatically the instant a voucher is redeemed</b>, paid to the supplier via the payment gateway</p>
-    <div class="cards">${card("Payments made",P.length)}${card("Total paid",money(total))}${card("Channel","Gateway")}</div>
+    <div class="cards">${card("Payments made",P.length,"","#4aa3ff")}${card("Total paid",money(total),"","#26c281")}${card("Channel","Gateway","","#e3b341")}</div>
     <div class="panel"><h3>Payment register</h3><table><thead><tr><th>When</th><th>Supplier</th><th>For voucher</th><th>Producer</th><th>Amount</th><th>Gateway ref</th><th>Status</th></tr></thead><tbody>
     ${P.map(x=>`<tr><td>${x.ts}</td><td>${x.supplier}</td><td>${x.voucher_no}</td><td>${x.who}</td><td>${money(x.amount)}</td><td>${x.ref}</td><td>${pill(x.status)}</td></tr>`).join("")||`<tr><td colspan="7" style="color:var(--muted)">No payments yet — redeem a voucher to trigger one.</td></tr>`}
     </tbody></table></div>
