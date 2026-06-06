@@ -37,7 +37,7 @@ function logAudit(actor,event,kind){ db.prepare('INSERT INTO audit(ts,actor,even
 // ---- seed (first run only) ------------------------------------------------
 if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
   const ip=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo) VALUES(?,?,?,?,?,?,?)');
-  [["Thabo Mokoena","FS","Thaba Nchu","Maize · 4ha","Active","Verified","M·41"],
+  [["Thabo Mokoena","FS","Mangaung","Maize · 4ha","Active","Verified","M·41"],
    ["Johannes Maritz","FS","Mangaung","Maize · 9ha","Active","Verified","M·58"],
    ["Palesa Mofokeng","FS","Mangaung","Beans · 3ha","Active","Verified","F·33"],
    ["Nomsa Dlamini","KZN","uMzinyathi","Vegetables · 1.5ha","Active","Verified","F·29"],
@@ -46,15 +46,15 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
    ["Lungile Zwane","KZN","uMzinyathi","Vegetables · 1ha","Pending","Verified","F·27"],
    ["Zanele Khumalo","KZN","Zululand","Vegetables · 2ha","Active","Verified","F·26"],
    ["Bongani Zulu","KZN","King Cetshwayo","Goats · 60 head","Active","Verified","M·44"],
-   ["Pieter van Wyk","WC","Swartland","Wheat · 12ha","Pending","Verified","M·53"],
-   ["Annelize Booysen","WC","Swartland","Wheat · 8ha","Active","Verified","F·36"],
+   ["Pieter van Wyk","WC","West Coast","Wheat · 12ha","Pending","Verified","M·53"],
+   ["Annelize Booysen","WC","West Coast","Wheat · 8ha","Active","Verified","F·36"],
    ["Lerato Sithole","GP","Tshwane","Poultry · 800 birds","Active","Verified","F·34"],
    ["Kabelo Maluleke","GP","Tshwane","Vegetables · 2ha","Active","Verified","M·40"],
    ["Fatima Patel","GP","Ekurhuleni","Poultry · 1200 birds","Active","Verified","F·48"],
-   ["Sipho Ndlovu","MP","Nkomazi","Sugarcane · 6ha","Active","Verified","M·47"],
+   ["Sipho Ndlovu","MP","Ehlanzeni","Sugarcane · 6ha","Active","Verified","M·47"],
    ["Grace Nkosi","MP","Ehlanzeni","Vegetables · 1ha","Active","Verified","F·27"],
-   ["Tshepo Molefe","NW","Bojanala","Sunflower · 15ha","Active","Verified","M·36"],
-   ["Anna Botha","NW","Mahikeng","Cattle · 40 head","Suspended","Mismatch","F·61"],
+   ["Tshepo Molefe","NW","Bojanala Platinum","Sunflower · 15ha","Active","Verified","M·36"],
+   ["Anna Botha","NW","Ngaka Modiri Molema","Cattle · 40 head","Suspended","Mismatch","F·61"],
    ["Dineo Phiri","LP","Vhembe","Tomatoes · 3ha","Active","Verified","F·31"],
    ["Mulalo Ramavhoya","LP","Vhembe","Maize · 4ha","Active","Verified","M·38"],
    ["Khathutshelo Nemukula","LP","Vhembe","Tomatoes · 2ha","Active","Verified","F·45"],
@@ -64,7 +64,7 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
   // ---- generate more beneficiaries to reach 50 (deterministic, from SA name pools) ----
   const FN={M:["Sipho","Thabo","Kabelo","Mpho","Andile","Bongani","Lwazi","Tshepo","Themba","Vusi","Katlego","Lehlohonolo","Mandla","Sizwe","Tumelo"],F:["Nomsa","Thandeka","Lerato","Palesa","Zanele","Dineo","Grace","Naledi","Boitumelo","Refilwe","Nokuthula","Ayanda","Precious","Khanyisile","Lindiwe"]};
   const SUR=["Mokoena","Dlamini","Nkosi","Zulu","Mahlangu","Khumalo","Molefe","Sithole","Ndlovu","Mthembu","Maluleke","Buthelezi","Phiri","Mokwena","Ngcobo","Nene","Mabaso","Radebe","Sibeko","Tshabalala"];
-  const PD={FS:["Mangaung","Thaba Nchu"],KZN:["uMzinyathi","Zululand","King Cetshwayo"],WC:["Swartland","Cape Winelands"],GP:["Tshwane","Ekurhuleni"],MP:["Nkomazi","Ehlanzeni"],NW:["Bojanala","Mahikeng"],LP:["Vhembe","Capricorn"],EC:["OR Tambo","Amathole"],NC:["Frances Baard","ZF Mgcawu"]};
+  const PD={FS:["Mangaung","Fezile Dabi","Thabo Mofutsanyana"],KZN:["uMzinyathi","Zululand","King Cetshwayo","uMgungundlovu"],WC:["West Coast","Cape Winelands","Garden Route"],GP:["Tshwane","Ekurhuleni","Johannesburg"],MP:["Ehlanzeni","Gert Sibande","Nkangala"],NW:["Bojanala Platinum","Dr Kenneth Kaunda","Ngaka Modiri Molema"],LP:["Vhembe","Capricorn","Mopani"],EC:["OR Tambo","Amathole","Chris Hani"],NC:["Frances Baard","ZF Mgcawu","Pixley ka Seme"]};
   const ENT=["Maize · 3ha","Maize · 6ha","Vegetables · 1ha","Vegetables · 2ha","Poultry · 500 birds","Goats · 40 head","Sugarcane · 5ha","Tomatoes · 2ha","Sunflower · 10ha","Cattle · 25 head","Beans · 2ha","Wheat · 7ha"];
   const PK=Object.keys(PD); let _r=20260605; const rnd=()=>{_r=(_r*1103515245+12345)&0x7fffffff;return _r/0x7fffffff;}; const pick=a=>a[Math.floor(rnd()*a.length)];
   while(db.prepare('SELECT COUNT(*) c FROM producers').get().c < 50){
@@ -86,7 +86,7 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
 
   const idl=db.prepare('INSERT INTO dealers(name,prov,dist,contact,status) VALUES(?,?,?,?,?)');
   [["AgriMart Tshwane","GP","Tshwane","D. Naidoo","Active"],
-   ["FarmCo Nkomazi","MP","Nkomazi","S. Mahlangu","Active"],
+   ["FarmCo Nkomazi","MP","Ehlanzeni","S. Mahlangu","Active"],
    ["KZN Agri Supplies","KZN","Zululand","B. Cele","Active"],
    ["uMzinyathi Agri Co-op","KZN","uMzinyathi","M. Ndlovu","Active"],
    ["Vhembe Farm Centre","LP","Vhembe","R. Netshi","Active"],
