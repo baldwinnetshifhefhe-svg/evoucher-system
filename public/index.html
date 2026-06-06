@@ -292,6 +292,9 @@ function buildThemeUI(){const opts=Object.entries(THEMES).map(([k,t])=>`<option 
 
 /* ================= STATE / DATA ================= */
 const PROV={FS:"Free State",KZN:"KwaZulu-Natal",WC:"Western Cape",GP:"Gauteng",MP:"Mpumalanga",NW:"North West",LP:"Limpopo",NC:"Northern Cape",EC:"Eastern Cape"};
+const DIST={FS:["Mangaung","Thaba Nchu","Fezile Dabi"],KZN:["uMzinyathi","Zululand","King Cetshwayo","eThekwini"],WC:["Swartland","Cape Winelands","Overberg"],GP:["Tshwane","Ekurhuleni","Johannesburg"],MP:["Nkomazi","Ehlanzeni","Gert Sibande"],NW:["Bojanala","Mahikeng","Dr Kenneth Kaunda"],LP:["Vhembe","Capricorn","Mopani"],EC:["OR Tambo","Amathole","Chris Hani"],NC:["Frances Baard","ZF Mgcawu","Pixley ka Seme"]};
+function distOptions(p,sel){return (DIST[p]||[]).map(d=>`<option ${d===sel?'selected':''}>${d}</option>`).join('');}
+function fillDist(pid,did){const d=document.getElementById(did);const pv=document.getElementById(pid);if(d&&pv)d.innerHTML=distOptions(pv.value);}
 let UID=100, VNO=480;
 const STATE={role:'gov',scope:null,view:'dash',filter:'',
   producers:[
@@ -413,8 +416,8 @@ function openAddBeneficiary(){
   const opts=Object.entries(PROV).map(([k,v])=>`<option value="${k}" ${STATE.scope===k?'selected':''}>${v}</option>`).join("");
   modal("Add beneficiary",`
     <div class="field"><label>Full name</label><input id="b_name" placeholder="e.g. Sibusiso Khoza"></div>
-    <div class="row"><div class="field"><label>Province</label><select id="b_prov">${opts}</select></div>
-    <div class="field"><label>District</label><input id="b_dist" placeholder="District"></div></div>
+    <div class="row"><div class="field"><label>Province</label><select id="b_prov" onchange="fillDist('b_prov','b_dist')">${opts}</select></div>
+    <div class="field"><label>District</label><select id="b_dist">${distOptions((STATE.scopeKind==='prov'&&STATE.scope)?STATE.scope:Object.keys(PROV)[0])}</select></div></div>
     <div class="field"><label>Enterprise</label><input id="b_ent" placeholder="e.g. Maize · 3ha"></div>
     <div class="row"><div class="field"><label>Gender·Age</label><input id="b_demo" placeholder="e.g. M·38"></div>
     <div class="field"><label>Cellphone</label><input id="b_cell" placeholder="e.g. 082 000 0000"></div></div>
@@ -719,7 +722,7 @@ const VIEWS={
     <div class="row">
       <div class="panel"><h3>Capture an application</h3>
         <div class="field"><label>Full name</label><input id="a_name" placeholder="Farmer name"></div>
-        <div class="row"><div class="field"><label>Province</label><select id="a_prov">${provOpts}</select></div><div class="field"><label>District</label><input id="a_dist" value="${STATE.scopeKind==='dist'?STATE.scope:''}"></div></div>
+        <div class="row"><div class="field"><label>Province</label><select id="a_prov" onchange="fillDist('a_prov','a_dist')">${provOpts}</select></div><div class="field"><label>District</label><select id="a_dist">${distOptions((STATE.scopeKind==='prov'&&STATE.scope)?STATE.scope:Object.keys(PROV)[0])}</select></div></div>
         <div class="row"><div class="field"><label>Enterprise</label><input id="a_ent" placeholder="e.g. Maize · 2ha"></div><div class="field"><label>Gender·Age</label><input id="a_demo" placeholder="e.g. F·29"></div></div>
         <button class="btn" onclick="applyNow()">Submit application</button>
       </div>
@@ -885,7 +888,7 @@ function showAddDealer(){const provOpts=Object.entries(PROV).map(([k,v])=>`<opti
     <div class="row"><div class="field"><label>Trading / company name</label><input id="d_name" placeholder="e.g. GreenFields Agri"></div><div class="field"><label>Contact person</label><input id="d_contact" placeholder="Full name"></div></div>
     <div class="row"><div class="field"><label>Company registration no.</label><input id="d_reg" placeholder="e.g. 2019/123456/07"></div><div class="field"><label>VAT number</label><input id="d_vat" placeholder="e.g. 4xxxxxxxxx"></div></div>
     <div class="row"><div class="field"><label>CSD number</label><input id="d_csd" placeholder="MAAA..."></div><div class="field"><label>Email</label><input id="d_email"></div><div class="field"><label>Phone</label><input id="d_phone"></div></div>
-    <div class="row"><div class="field"><label>Province</label><select id="d_prov">${provOpts}</select></div><div class="field"><label>District</label><input id="d_dist" value="${STATE.scopeKind==='dist'?STATE.scope:''}"></div></div>
+    <div class="row"><div class="field"><label>Province</label><select id="d_prov" onchange="fillDist('d_prov','d_dist')">${provOpts}</select></div><div class="field"><label>District</label><select id="d_dist">${distOptions((STATE.scopeKind==='prov'&&STATE.scope)?STATE.scope:Object.keys(PROV)[0])}</select></div></div>
     <div class="field"><label>Physical address</label><input id="d_addr" placeholder="Street, town"></div>
     <div class="field"><label>Banking details</label><input id="d_bank" placeholder="Bank · account number · branch"></div>
     <div class="field"><label>Product catalogue (what they stock)</label><input id="d_cat" placeholder="e.g. seed, fertiliser, feed, equipment"></div>
