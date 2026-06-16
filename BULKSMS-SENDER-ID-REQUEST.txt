@@ -1,0 +1,38 @@
+BulkSMS support request — sent 2026-06-16
+To: support@bulksms.com
+Subject: Transactional OTP/voucher SMS returning NOT_SENT — request Sender ID registration & transactional routing
+
+----------------------------------------------------------------------
+
+Good day,
+
+I am running an official South African Department of Agriculture producer-support
+system (e-PSS / e-Voucher) that sends transactional messages to farmers — one-time
+PINs (OTPs) and voucher notifications. I am a paying customer with credits available,
+and I have ticked the WASPA Do-Not-Contact transactional-consent option.
+
+My problem: plain notification SMSes deliver, but any message containing an OTP /
+verification code / voucher wording returns FAILED · NOT_SENT — to both DNC-registered
+and non-DNC numbers. Examples from my account (same recipients, same time window):
+
+  DELIVERED  - message id 1648796236477632512  ("...confirming SMS delivery... No action needed.")
+  DELIVERED  - message id 1648797766979162112  (plain notification, repeated)
+  NOT_SENT   - message id 1648797540193144832  ("Your DoA e-PSS verification code is 4821...")
+  NOT_SENT   - message id 1648798306735755264  (voucher + OTP notification)
+
+These are legitimate government transactional messages (OTP and input-voucher
+notifications), not marketing. Please could you:
+
+  1. Register a dedicated Sender ID for my account (suggested: DoAePSS), and
+  2. Enable transactional routing so OTP/voucher content is no longer filtered as NOT_SENT.
+
+Happy to provide any verification of the department/use case you require.
+
+Kind regards,
+Baldwin Netshifhefhe
+Department of Agriculture — e-PSS (e-Producer Support System)
+
+----------------------------------------------------------------------
+NOTE: Until BulkSMS enables a registered Sender ID + transactional routing, real
+OTP/voucher SMS will not deliver. The app, gateway, credits and numbers all work —
+this is a network/sender-registration issue, not a code bug.
