@@ -40,17 +40,33 @@ ensureCol('users','failed_attempts','INTEGER DEFAULT 0');  // login lockout (bru
 ensureCol('users','locked_until','INTEGER');
 function hashPw(pw){ const salt=crypto.randomBytes(16).toString('hex'); return salt+':'+crypto.scryptSync(String(pw),salt,32).toString('hex'); }
 function checkPw(pw, stored){ if(!stored) return false; if(!String(stored).includes(':')) return String(pw)===String(stored); const [s,h]=String(stored).split(':'); try{ return crypto.scryptSync(String(pw),s,32).toString('hex')===h; }catch(e){ return false; } }
-// Real SMS via Twilio when env vars are set; otherwise safely simulated (so the demo still works).
+// Real SMS: prefers BulkSMS (SA-local), then Twilio; otherwise safely simulated.
 async function sendSms(to, text){
+  // 1) BulkSMS — best for South African delivery
+  const bUser=process.env.BULKSMS_USERNAME, bPass=process.env.BULKSMS_PASSWORD;
+  if(bUser&&bPass){
+    try{
+      const r=await fetch('https://api.bulksms.com/v1/messages',{method:'POST',
+        headers:{'Authorization':'Basic '+Buffer.from(bUser+':'+bPass).toString('base64'),'Content-Type':'application/json'},
+        body:JSON.stringify({to, body:text})});
+      const j=await r.json().catch(()=>null);
+      if(r.ok){ const id=Array.isArray(j)&&j[0]?j[0].id:undefined; return { sent:true, to, ref:id, source:'BulkSMS' }; }
+      return { sent:false, to, error:(j&&(j.detail||j.title))||('HTTP '+r.status), source:'BulkSMS' };
+    }catch(e){ return { sent:false, to, error:String(e), source:'BulkSMS' }; }
+  }
+  // 2) Twilio
   const sid=process.env.TWILIO_ACCOUNT_SID, tok=process.env.TWILIO_AUTH_TOKEN, from=process.env.TWILIO_FROM;
-  if(!sid||!tok||!from) return { sent:false, simulated:true, to:to||'•••• ••••', ref:'SMS-'+Date.now().toString().slice(-7), source:'SMS gateway (simulated — set TWILIO_* env vars to send for real)' };
-  try{
-    const r=await fetch('https://api.twilio.com/2010-04-01/Accounts/'+sid+'/Messages.json',{method:'POST',
-      headers:{'Authorization':'Basic '+Buffer.from(sid+':'+tok).toString('base64'),'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({To:to,From:from,Body:text})});
-    const j=await r.json().catch(()=>({}));
-    return r.ok ? { sent:true, to, ref:j.sid, source:'Twilio' } : { sent:false, error:j.message||('HTTP '+r.status), to, source:'Twilio' };
-  }catch(e){ return { sent:false, error:String(e), to, source:'Twilio' }; }
+  if(sid&&tok&&from){
+    try{
+      const r=await fetch('https://api.twilio.com/2010-04-01/Accounts/'+sid+'/Messages.json',{method:'POST',
+        headers:{'Authorization':'Basic '+Buffer.from(sid+':'+tok).toString('base64'),'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({To:to,From:from,Body:text})});
+      const j=await r.json().catch(()=>({}));
+      return r.ok ? { sent:true, to, ref:j.sid, source:'Twilio' } : { sent:false, error:j.message||('HTTP '+r.status), to, source:'Twilio' };
+    }catch(e){ return { sent:false, error:String(e), to, source:'Twilio' }; }
+  }
+  // 3) simulated
+  return { sent:false, simulated:true, to:to||'•••• ••••', source:'SMS gateway (simulated — add BULKSMS_USERNAME/PASSWORD or TWILIO_* to send for real)' };
 }
 
 const now = () => new Date().toLocaleString('en-ZA');
