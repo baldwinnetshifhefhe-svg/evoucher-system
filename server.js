@@ -317,7 +317,10 @@ const server=http.createServer(async(req,res)=>{
         if(!ph||!ph.phone) return json(res,400,{error:'Voucher NOT issued — '+b.who+' has no mobile number on file, so the voucher SMS (with the OTP) cannot be delivered. Add a phone number on the Beneficiaries register first.'});
         const no=nextVoucherNo(); const otp=otp4();
         const sms=await sendSms(ph.phone, `DoA e-Voucher: You have received ${pk.name} (R${pk.val}). Redeem at an accredited agro-dealer with OTP ${otp}. Valid until ${fyEnd()}. Ref ${no}.`);
-        if(!sms.simulated){
+        if(sms.simulated){
+          // On a live server, "simulated" means NO gateway is configured -> nothing was really sent -> refuse (Baldwin's rule). Local dev still allowed.
+          if(process.env.RENDER) return json(res,400,{error:'Voucher NOT issued — no SMS gateway is configured on this server, so the voucher OTP cannot be delivered to '+ph.phone+'. Add BULKSMS_USERNAME and BULKSMS_PASSWORD to this service, then retry.', sms});
+        } else {
           if(!sms.sent) return json(res,400,{error:'Voucher NOT issued — SMS could not be sent to '+ph.phone+': '+(sms.error||'unknown')+'. Fix the number, then retry.', sms});
           // Confirm the network actually accepted it (catches WASPA Do-Not-Contact / inactive numbers, which return FAILED·NOT_SENT).
           let st=null;
