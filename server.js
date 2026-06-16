@@ -392,7 +392,7 @@ const server=http.createServer(async(req,res)=>{
     const file=p==='/'?'/index.html':p;
     const full=path.join(__dirname,'public',path.normalize(file).replace(/^(\.\.[/\\])+/,''));
     if(fs.existsSync(full)&&fs.statSync(full).isFile()){
-      const ext=path.extname(full).toLowerCase(); const types={'.html':'text/html','.js':'text/javascript','.css':'text/css'};
+      const ext=path.extname(full).toLowerCase(); const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.ico':'image/x-icon','.json':'application/json'};
       res.writeHead(200,{'Content-Type':types[ext]||'text/plain'}); return res.end(fs.readFileSync(full));
     }
     res.writeHead(404); res.end('Not found');
