@@ -69,6 +69,19 @@ async function sendSms(to, text){
   // 3) simulated
   return { sent:false, simulated:true, to:to||'•••• ••••', source:'SMS gateway (simulated — add BULKSMS_USERNAME/PASSWORD or TWILIO_* to send for real)' };
 }
+// Ask BulkSMS the real delivery status of a message id (ACCEPTED / SENT / DELIVERED / FAILED).
+async function smsStatus(id){
+  const bUser=process.env.BULKSMS_USERNAME, bPass=process.env.BULKSMS_PASSWORD;
+  if(!bUser||!bPass) return { id, status:'no-provider' };
+  if(!id) return { id, status:'no-id' };
+  try{
+    const r=await fetch('https://api.bulksms.com/v1/messages/'+encodeURIComponent(id),
+      { headers:{'Authorization':'Basic '+Buffer.from(bUser+':'+bPass).toString('base64')} });
+    const j=await r.json().catch(()=>null);
+    if(r.ok&&j){ const s=j.status||{}; return { id, status:(s.type||s.id||'unknown'), detail:(s.subtype||''), to:j.to }; }
+    return { id, status:'error', detail:'HTTP '+r.status };
+  }catch(e){ return { id, status:'error', detail:String(e) }; }
+}
 
 const now = () => new Date().toLocaleString('en-ZA');
 const today = () => new Date().toLocaleDateString('en-ZA');
@@ -415,6 +428,7 @@ const server=http.createServer(async(req,res)=>{
       if(p==='/api/integrations/rica' && m==='GET'){const name=url.searchParams.get('name')||'';const ok=!/botha/i.test(name);return json(res,200,{name,verified:ok,result:ok?"Number registered in the producer's name":'Name mismatch — manual check required',source:'RICA (simulated)'});}
       if(p==='/api/integrations/extension-directory' && m==='GET') return json(res,200,[{name:'M. Sitali',role:'Extension Officer',prov:'KZN',cell:'082 000 0001'},{name:'J. Ngaka',role:'Extension Officer',prov:'LP',cell:'082 000 0002'},{name:'T. Mothibi',role:'Extension Officer',prov:'MP',cell:'082 000 0003'}]);
       if(p==='/api/integrations/sms' && m==='POST'){const b=await body(req);return json(res,200, await sendSms(b.to||'', b.body||b.message||'Test message from e-PSS (e-Voucher).'));}
+      if(p==='/api/integrations/sms-status' && m==='GET'){ return json(res,200, await smsStatus(url.searchParams.get('id'))); }
       if(p==='/api/integrations/bas' && m==='POST'){const b=await body(req);return json(res,200,{ref:'BAS-'+Date.now().toString().slice(-8),amount:b.amount||0,status:'Disbursement raised',source:'BAS (simulated)'});}
       if(p==='/api/integrations/gateway' && m==='POST'){const b=await body(req);return json(res,200,{ref:'PG-'+Date.now().toString().slice(-8),amount:b.amount||0,status:'Paid',source:'Payment gateway (simulated)'});}
 
