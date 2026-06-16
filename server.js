@@ -162,6 +162,7 @@ function matchProducers(q){           // criteria-based selection (women, youth,
 }
 
 // ---- server ---------------------------------------------------------------
+const SESSIONS = new Map();   // token -> { name, ts } : API access requires a valid session token
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost'); const p=url.pathname; const m=req.method;
   const scope=url.searchParams.get('scope')||'';
@@ -173,6 +174,13 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
   try{
     if(p.startsWith('/api/')){
+
+      // ---- API authentication gate: every endpoint except /api/login needs a valid token ----
+      if(p!=='/api/login'){
+        const tok=(req.headers['authorization']||'').replace(/^Bearer\s+/i,'')||req.headers['x-auth-token']||'';
+        const sess=SESSIONS.get(tok);
+        if(!sess || (Date.now()-sess.ts>12*3600*1000)){ if(sess) SESSIONS.delete(tok); return json(res,401,{error:'Not signed in'}); }
+      }
 
       // ---- auth ----
       if(p==='/api/login' && m==='POST'){
@@ -186,7 +194,8 @@ const server=http.createServer(async(req,res)=>{
         }
         db.prepare('UPDATE users SET failed_attempts=0, locked_until=NULL WHERE id=?').run(row.id);
         logAudit(row.name,'Signed in','info');
-        return json(res,200,{username:row.username,name:row.name,role:row.role,scope:row.scope});
+        const token=crypto.randomBytes(24).toString('hex'); SESSIONS.set(token,{name:row.name, ts:Date.now()});
+        return json(res,200,{username:row.username,name:row.name,role:row.role,scope:row.scope,token});
       }
 
       // ---- stats (optionally scoped to a province) ----
