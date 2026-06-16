@@ -6,6 +6,7 @@ const http = require('node:http');
 const fs   = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
+const crypto = require('node:crypto');
 
 const PORT = process.env.PORT || 3000;            // Render supplies PORT automatically
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'evoucher.db');
@@ -28,11 +29,25 @@ CREATE TABLE IF NOT EXISTS feedback(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,ts TEXT,actor TEXT,event TEXT,kind TEXT);
 `);
 
+// add columns to existing databases (SQLite has no "ADD COLUMN IF NOT EXISTS")
+function ensureCol(table,col,def){ const cols=db.prepare(`PRAGMA table_info(${table})`).all(); if(!cols.some(c=>c.name===col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); }
+ensureCol('vouchers','confirm_code','TEXT');     // code SMS-sent to the FARMER to confirm receipt
+ensureCol('vouchers','confirmed_at','TEXT');
+ensureCol('vouchers','confirm_status',"TEXT DEFAULT ''");  // '' | Confirmed | Disputed (farmer receipt check)
+ensureCol('audit','prev_hash','TEXT');           // tamper-evident hash chain
+ensureCol('audit','hash','TEXT');
+
 const now = () => new Date().toLocaleString('en-ZA');
 const today = () => new Date().toLocaleDateString('en-ZA');
 const fyEnd = () => { const d=new Date(); const y=d.getMonth()>=3?d.getFullYear()+1:d.getFullYear(); return y+'-03-31'; }; // SA financial year ends 31 March
 const fyLabel = () => { const d=new Date(); const s=d.getMonth()>=3?d.getFullYear():d.getFullYear()-1; return s+'/'+String(s+1).slice(2); };
-function logAudit(actor,event,kind){ db.prepare('INSERT INTO audit(ts,actor,event,kind) VALUES(?,?,?,?)').run(now(),actor,event,kind); }
+function logAudit(actor,event,kind){
+  const prev=db.prepare('SELECT hash FROM audit ORDER BY id DESC LIMIT 1').get();
+  const prevHash=prev&&prev.hash?prev.hash:'GENESIS';
+  const ts=now();
+  const hash=crypto.createHash('sha256').update(prevHash+'|'+ts+'|'+actor+'|'+event+'|'+kind).digest('hex');
+  db.prepare('INSERT INTO audit(ts,actor,event,kind,prev_hash,hash) VALUES(?,?,?,?,?,?)').run(ts,actor,event,kind,prevHash,hash);
+}
 
 // ---- seed (first run only) ------------------------------------------------
 if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
@@ -167,7 +182,10 @@ const server=http.createServer(async(req,res)=>{
         const byProv=db.prepare('SELECT prov,COUNT(*) c FROM producers'+pw+' GROUP BY prov ORDER BY c DESC').all(...args);
         const female=db.prepare("SELECT COUNT(*) c FROM producers WHERE demo LIKE 'F%'"+(scope?' AND prov=?':'')).get(...args).c;
         const youth=db.prepare("SELECT COUNT(*) c FROM producers WHERE CAST(substr(demo,instr(demo,'·')+1) AS INT)<=35"+(scope?' AND prov=?':'')).get(...args).c;
-        return json(res,200,{producers,issued,redeemed,value,byProv,female,male:producers-female,youth});
+        const confirmed=db.prepare("SELECT COUNT(*) c FROM vouchers WHERE confirm_status='Confirmed'"+(scope?' AND prov=?':'')).get(...args).c;
+        const unconfirmed=db.prepare("SELECT COUNT(*) c FROM vouchers WHERE status='Redeemed' AND COALESCE(confirm_status,'')=''"+(scope?' AND prov=?':'')).get(...args).c;
+        const disputed=db.prepare("SELECT COUNT(*) c FROM vouchers WHERE confirm_status='Disputed'"+(scope?' AND prov=?':'')).get(...args).c;
+        return json(res,200,{producers,issued,redeemed,value,byProv,female,male:producers-female,youth,confirmed,unconfirmed,disputed});
       }
 
       // ---- producers ----
@@ -227,15 +245,41 @@ const server=http.createServer(async(req,res)=>{
         const b=await body(req); const v=db.prepare('SELECT * FROM vouchers WHERE id=?').get(+mm[1]);
         if(!v)return json(res,404,{error:'voucher not found'});
         if(v.status==='Redeemed')return json(res,400,{error:'already redeemed'});
+        if(v.status==='Awaiting confirmation')return json(res,400,{error:'goods already collected — awaiting the farmer’s confirmation of receipt'});
         if(v.expiry && new Date() > new Date(v.expiry+'T23:59:59')) return json(res,400,{error:'Voucher expired (financial year ended) — cannot redeem'});
         if(String(b.otp).trim()!==v.otp) return json(res,400,{error:'Wrong OTP — redemption refused'});
         const dealer=b.dealer||'(dealer)';
-        db.prepare("UPDATE vouchers SET status='Redeemed',dealer=?,redeemed_at=? WHERE id=?").run(dealer,today(),+mm[1]);
-        // IMMEDIATE payment to the supplier via the payment gateway, the instant redemption is confirmed
+        const cc=otp4();   // confirmation code SMS-sent to the FARMER to verify receipt (added layer)
+        // Dealer OTP method retained: supplier is paid immediately on redemption (unchanged).
+        db.prepare("UPDATE vouchers SET status='Redeemed',dealer=?,redeemed_at=?,confirm_code=?,confirm_status='' WHERE id=?").run(dealer,today(),cc,+mm[1]);
         const ref='PG-'+Date.now().toString().slice(-8);
         db.prepare("INSERT INTO payments(ts,supplier,voucher_no,who,amount,gateway,ref,status) VALUES(?,?,?,?,?,?,?,?)").run(now(),dealer,v.no,v.who,v.val,'PayGate (gateway)',ref,'Paid');
-        logAudit(v.who,`Voucher ${v.no} redeemed at ${dealer} — OTP verified; immediate payment R${v.val} to supplier via gateway (${ref})`,'ok');
-        return json(res,200,{ok:true,paid:v.val,ref});
+        logAudit(v.who,`Voucher ${v.no} redeemed at ${dealer} — OTP verified; payment R${v.val} to supplier (${ref}). Farmer confirmation code SMS-sent to verify receipt.`,'ok');
+        return json(res,200,{ok:true,paid:v.val,ref,confirm_code:cc});
+      }
+      // FARMER confirms they actually received the goods (added assurance, after redemption)
+      mm=p.match(/^\/api\/vouchers\/(\d+)\/confirm$/);
+      if(mm && m==='POST'){
+        const b=await body(req); const v=db.prepare('SELECT * FROM vouchers WHERE id=?').get(+mm[1]);
+        if(!v)return json(res,404,{error:'voucher not found'});
+        if(v.status!=='Redeemed')return json(res,400,{error:'only a redeemed voucher can be confirmed'});
+        if(v.confirm_status==='Confirmed')return json(res,400,{error:'already confirmed by the farmer'});
+        if(String(b.code||'').trim()!==v.confirm_code) return json(res,400,{error:'Wrong confirmation code — only the farmer who received the goods can confirm'});
+        db.prepare("UPDATE vouchers SET confirm_status='Confirmed',confirmed_at=? WHERE id=?").run(now(),+mm[1]);
+        logAudit(v.who,`Voucher ${v.no} — FARMER CONFIRMED receipt of goods from ${v.dealer}.`,'ok');
+        return json(res,200,{ok:true});
+      }
+      // FARMER disputes (did not receive / short) — opens a grievance for investigation/recovery
+      mm=p.match(/^\/api\/vouchers\/(\d+)\/dispute$/);
+      if(mm && m==='POST'){
+        const b=await body(req); const v=db.prepare('SELECT * FROM vouchers WHERE id=?').get(+mm[1]);
+        if(!v)return json(res,404,{error:'voucher not found'});
+        if(v.status!=='Redeemed')return json(res,400,{error:'only a redeemed voucher can be disputed'});
+        db.prepare("UPDATE vouchers SET confirm_status='Disputed' WHERE id=?").run(+mm[1]);
+        const ref='GR-'+String(40+db.prepare('SELECT COUNT(*) c FROM grievances').get().c+3).padStart(4,'0');
+        db.prepare('INSERT INTO grievances(ref,who,issue,status,created) VALUES(?,?,?,?,?)').run(ref,v.who,`Did not receive / short delivery — voucher ${v.no} at ${v.dealer}. ${b.reason||'Reported by farmer.'} (Payment already made — investigate / recover.)`,'Open',today());
+        logAudit(v.who,`Voucher ${v.no} DISPUTED by farmer — grievance ${ref} opened to investigate ${v.dealer} (payment already released; recovery may be needed).`,'no');
+        return json(res,200,{ok:true,grievance:ref});
       }
 
       // ---- catalogue ----
@@ -316,6 +360,30 @@ const server=http.createServer(async(req,res)=>{
       mm=p.match(/^\/api\/users\/(\d+)$/); if(mm && m==='DELETE'){db.prepare('DELETE FROM users WHERE id=?').run(+mm[1]);return json(res,200,{ok:true});}
 
       if(p==='/api/audit' && m==='GET') return json(res,200,db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 80').all());
+
+      // tamper-evident audit: recompute the hash chain and report any break
+      if(p==='/api/audit/verify' && m==='GET'){
+        const rows=db.prepare('SELECT * FROM audit ORDER BY id').all();
+        let prev='GENESIS', ok=true, broken=null, checked=0;
+        for(const r of rows){
+          if(r.hash==null) continue;   // legacy row from before hashing
+          const expect=crypto.createHash('sha256').update(prev+'|'+r.ts+'|'+r.actor+'|'+r.event+'|'+r.kind).digest('hex');
+          if(r.prev_hash!==prev || r.hash!==expect){ ok=false; broken=r.id; break; }
+          prev=r.hash; checked++;
+        }
+        return json(res,200,{ok,checked,broken});
+      }
+
+      // confirmation oversight: per-dealer confirmed/awaiting/disputed (the aggregate-silence red flag)
+      if(p==='/api/oversight/confirmation' && m==='GET'){
+        const rows=db.prepare(`SELECT dealer,
+          SUM(CASE WHEN status='Redeemed' THEN 1 ELSE 0 END) redeemed,
+          SUM(CASE WHEN confirm_status='Confirmed' THEN 1 ELSE 0 END) confirmed,
+          SUM(CASE WHEN status='Redeemed' AND COALESCE(confirm_status,'')='' THEN 1 ELSE 0 END) awaiting,
+          SUM(CASE WHEN confirm_status='Disputed' THEN 1 ELSE 0 END) disputed
+          FROM vouchers WHERE dealer IS NOT NULL AND dealer<>'' GROUP BY dealer ORDER BY disputed DESC, awaiting DESC`).all();
+        return json(res,200,rows);
+      }
 
       return json(res,404,{error:'unknown endpoint'});
     }
