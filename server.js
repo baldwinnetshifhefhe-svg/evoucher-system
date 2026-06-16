@@ -36,6 +36,10 @@ ensureCol('vouchers','confirmed_at','TEXT');
 ensureCol('vouchers','confirm_status',"TEXT DEFAULT ''");  // '' | Confirmed | Disputed (farmer receipt check)
 ensureCol('audit','prev_hash','TEXT');           // tamper-evident hash chain
 ensureCol('audit','hash','TEXT');
+ensureCol('users','failed_attempts','INTEGER DEFAULT 0');  // login lockout (brute-force protection)
+ensureCol('users','locked_until','INTEGER');
+function hashPw(pw){ const salt=crypto.randomBytes(16).toString('hex'); return salt+':'+crypto.scryptSync(String(pw),salt,32).toString('hex'); }
+function checkPw(pw, stored){ if(!stored) return false; if(!String(stored).includes(':')) return String(pw)===String(stored); const [s,h]=String(stored).split(':'); try{ return crypto.scryptSync(String(pw),s,32).toString('hex')===h; }catch(e){ return false; } }
 
 const now = () => new Date().toLocaleString('en-ZA');
 const today = () => new Date().toLocaleDateString('en-ZA');
@@ -139,6 +143,8 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
   logAudit("System","Database created and seeded","info");
   console.log("✔ Database seeded (first run).");
 }
+// hash any plain-text passwords (one-time migration; safe to run every start)
+for(const u of db.prepare('SELECT id,password FROM users').all()){ if(u.password && !String(u.password).includes(':')) db.prepare('UPDATE users SET password=? WHERE id=?').run(hashPw(u.password), u.id); }
 
 // ---- helpers --------------------------------------------------------------
 const json=(res,code,obj)=>{res.writeHead(code,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));};
@@ -159,16 +165,28 @@ function matchProducers(q){           // criteria-based selection (women, youth,
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url,'http://localhost'); const p=url.pathname; const m=req.method;
   const scope=url.searchParams.get('scope')||'';
+  res.setHeader('X-Content-Type-Options','nosniff');
+  res.setHeader('X-Frame-Options','DENY');
+  res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
+  res.setHeader('Content-Security-Policy',"frame-ancestors 'none'");
+  res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+  res.setHeader('Strict-Transport-Security','max-age=31536000; includeSubDomains');
   try{
     if(p.startsWith('/api/')){
 
       // ---- auth ----
       if(p==='/api/login' && m==='POST'){
-        const b=await body(req);
-        const u=db.prepare('SELECT username,name,role,scope FROM users WHERE username=? AND password=?').get((b.username||'').trim(),(b.password||'').trim());
-        if(!u) return json(res,401,{error:'Invalid username or password'});
-        logAudit(u.name,'Signed in','info');
-        return json(res,200,u);
+        const b=await body(req); const un=(b.username||'').trim(); const pw=(b.password||'').trim();
+        const row=db.prepare('SELECT * FROM users WHERE username=?').get(un);
+        if(row && row.locked_until && Date.now() < row.locked_until)
+          return json(res,423,{error:'Account locked after too many attempts. Try again in '+Math.ceil((row.locked_until-Date.now())/60000)+' min.'});
+        if(!row || !checkPw(pw,row.password)){
+          if(row){ const fa=(row.failed_attempts||0)+1; const lock=fa>=5?Date.now()+15*60000:null; db.prepare('UPDATE users SET failed_attempts=?, locked_until=? WHERE id=?').run(fa,lock,row.id); }
+          return json(res,401,{error:'Invalid username or password'});
+        }
+        db.prepare('UPDATE users SET failed_attempts=0, locked_until=NULL WHERE id=?').run(row.id);
+        logAudit(row.name,'Signed in','info');
+        return json(res,200,{username:row.username,name:row.name,role:row.role,scope:row.scope});
       }
 
       // ---- stats (optionally scoped to a province) ----
