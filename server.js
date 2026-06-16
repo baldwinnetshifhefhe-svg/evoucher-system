@@ -311,12 +311,21 @@ const server=http.createServer(async(req,res)=>{
         if(!b.who||!pk)return json(res,400,{error:'producer and package required'});
         const dup=db.prepare("SELECT 1 FROM vouchers WHERE who=? AND pkg=? AND status='Issued'").get(b.who,pk.name);
         if(dup) return json(res,400,{error:'Beneficiary already has an active voucher for this package (anti double-dipping)'});
+        // RULE: no SMS = no voucher. The farmer can only redeem with the OTP we SMS them,
+        // so a voucher that can't be delivered must not be issued. Check the phone + send + confirm BEFORE committing.
+        const ph=db.prepare('SELECT phone FROM producers WHERE name=?').get(b.who);
+        if(!ph||!ph.phone) return json(res,400,{error:'Voucher NOT issued — '+b.who+' has no mobile number on file, so the voucher SMS (with the OTP) cannot be delivered. Add a phone number on the Beneficiaries register first.'});
         const no=nextVoucherNo(); const otp=otp4();
+        const sms=await sendSms(ph.phone, `DoA e-Voucher: You have received ${pk.name} (R${pk.val}). Redeem at an accredited agro-dealer with OTP ${otp}. Valid until ${fyEnd()}. Ref ${no}.`);
+        if(!sms.simulated){
+          if(!sms.sent) return json(res,400,{error:'Voucher NOT issued — SMS could not be sent to '+ph.phone+': '+(sms.error||'unknown')+'. Fix the number, then retry.', sms});
+          // Confirm the network actually accepted it (catches WASPA Do-Not-Contact / inactive numbers, which return FAILED·NOT_SENT).
+          let st=null;
+          if(sms.ref){ for(const d of [1500,2000,2500,3000]){ await new Promise(r=>setTimeout(r,d)); st=await smsStatus(sms.ref); const t=String(st.status||'').toUpperCase(); if(t==='DELIVERED'||t==='SENT') break; if(t==='FAILED'||t==='REJECTED'||t==='UNDELIVERED'||String(st.detail||'').toUpperCase()==='NOT_SENT'){ return json(res,400,{error:'Voucher NOT issued — the network rejected the SMS to '+ph.phone+' ('+(st.detail||t)+'). This number is likely on the WASPA Do-Not-Contact list or is not SMS-active. Enable WASPA transactional consent in BulkSMS, or use a different number, then retry.', sms, delivery:st}); } } }
+        }
         db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at,expiry) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
           .run(no,b.who,provOf(b.who),pk.name,pk.val,'Issued',otp,'',today(),'',fyEnd());
-        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — valid until ${fyEnd()}`,'info');
-        const ph=db.prepare('SELECT phone FROM producers WHERE name=?').get(b.who); let sms=null;
-        if(ph&&ph.phone) sms=await sendSms(ph.phone, `DoA e-Voucher: You have received ${pk.name} (R${pk.val}). Redeem at an accredited agro-dealer with OTP ${otp}. Valid until ${fyEnd()}. Ref ${no}.`);
+        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — SMS sent to ${ph.phone}; valid until ${fyEnd()}`,'info');
         return json(res,200,{no,val:pk.val,otp,expiry:fyEnd(),sms});
       }
       mm=p.match(/^\/api\/vouchers\/(\d+)\/redeem$/);
