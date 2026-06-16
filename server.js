@@ -40,6 +40,18 @@ ensureCol('users','failed_attempts','INTEGER DEFAULT 0');  // login lockout (bru
 ensureCol('users','locked_until','INTEGER');
 function hashPw(pw){ const salt=crypto.randomBytes(16).toString('hex'); return salt+':'+crypto.scryptSync(String(pw),salt,32).toString('hex'); }
 function checkPw(pw, stored){ if(!stored) return false; if(!String(stored).includes(':')) return String(pw)===String(stored); const [s,h]=String(stored).split(':'); try{ return crypto.scryptSync(String(pw),s,32).toString('hex')===h; }catch(e){ return false; } }
+// Real SMS via Twilio when env vars are set; otherwise safely simulated (so the demo still works).
+async function sendSms(to, text){
+  const sid=process.env.TWILIO_ACCOUNT_SID, tok=process.env.TWILIO_AUTH_TOKEN, from=process.env.TWILIO_FROM;
+  if(!sid||!tok||!from) return { sent:false, simulated:true, to:to||'•••• ••••', ref:'SMS-'+Date.now().toString().slice(-7), source:'SMS gateway (simulated — set TWILIO_* env vars to send for real)' };
+  try{
+    const r=await fetch('https://api.twilio.com/2010-04-01/Accounts/'+sid+'/Messages.json',{method:'POST',
+      headers:{'Authorization':'Basic '+Buffer.from(sid+':'+tok).toString('base64'),'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({To:to,From:from,Body:text})});
+    const j=await r.json().catch(()=>({}));
+    return r.ok ? { sent:true, to, ref:j.sid, source:'Twilio' } : { sent:false, error:j.message||('HTTP '+r.status), to, source:'Twilio' };
+  }catch(e){ return { sent:false, error:String(e), to, source:'Twilio' }; }
+}
 
 const now = () => new Date().toLocaleString('en-ZA');
 const today = () => new Date().toLocaleDateString('en-ZA');
@@ -377,7 +389,7 @@ const server=http.createServer(async(req,res)=>{
       if(p==='/api/integrations/dss' && m==='GET'){const prov=url.searchParams.get('prov')||'national';const lv=['Low','Watch','Medium','High'];const i=[...prov].reduce((a,c)=>a+c.charCodeAt(0),0)%lv.length;return json(res,200,{prov,risk:lv[i],rainfall_mm:i*7+3,advisory:i>=2?'Dry spell expected — advise water-wise inputs':'Conditions favourable for planting',source:'DSS (simulated)'});}
       if(p==='/api/integrations/rica' && m==='GET'){const name=url.searchParams.get('name')||'';const ok=!/botha/i.test(name);return json(res,200,{name,verified:ok,result:ok?"Number registered in the producer's name":'Name mismatch — manual check required',source:'RICA (simulated)'});}
       if(p==='/api/integrations/extension-directory' && m==='GET') return json(res,200,[{name:'M. Sitali',role:'Extension Officer',prov:'KZN',cell:'082 000 0001'},{name:'J. Ngaka',role:'Extension Officer',prov:'LP',cell:'082 000 0002'},{name:'T. Mothibi',role:'Extension Officer',prov:'MP',cell:'082 000 0003'}]);
-      if(p==='/api/integrations/sms' && m==='POST'){const b=await body(req);return json(res,200,{sent:true,to:b.to||'•••• ••••',ref:'SMS-'+Date.now().toString().slice(-7),source:'SMS gateway (simulated)'});}
+      if(p==='/api/integrations/sms' && m==='POST'){const b=await body(req);return json(res,200, await sendSms(b.to||'', b.body||b.message||'Test message from e-PSS (e-Voucher).'));}
       if(p==='/api/integrations/bas' && m==='POST'){const b=await body(req);return json(res,200,{ref:'BAS-'+Date.now().toString().slice(-8),amount:b.amount||0,status:'Disbursement raised',source:'BAS (simulated)'});}
       if(p==='/api/integrations/gateway' && m==='POST'){const b=await body(req);return json(res,200,{ref:'PG-'+Date.now().toString().slice(-8),amount:b.amount||0,status:'Paid',source:'Payment gateway (simulated)'});}
 
