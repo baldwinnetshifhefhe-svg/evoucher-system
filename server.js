@@ -38,6 +38,7 @@ ensureCol('audit','prev_hash','TEXT');           // tamper-evident hash chain
 ensureCol('audit','hash','TEXT');
 ensureCol('users','failed_attempts','INTEGER DEFAULT 0');  // login lockout (brute-force protection)
 ensureCol('users','locked_until','INTEGER');
+ensureCol('producers','phone','TEXT');   // farmer cellphone — for real SMS of voucher + OTP
 function hashPw(pw){ const salt=crypto.randomBytes(16).toString('hex'); return salt+':'+crypto.scryptSync(String(pw),salt,32).toString('hex'); }
 function checkPw(pw, stored){ if(!stored) return false; if(!String(stored).includes(':')) return String(pw)===String(stored); const [s,h]=String(stored).split(':'); try{ return crypto.scryptSync(String(pw),s,32).toString('hex')===h; }catch(e){ return false; } }
 // Real SMS: prefers BulkSMS (SA-local), then Twilio; otherwise safely simulated.
@@ -173,6 +174,9 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
 }
 // hash any plain-text passwords (one-time migration; safe to run every start)
 for(const u of db.prepare('SELECT id,password FROM users').all()){ if(u.password && !String(u.password).includes(':')) db.prepare('UPDATE users SET password=? WHERE id=?').run(hashPw(u.password), u.id); }
+// seed two test farmer cellphones so issuing them a voucher sends a REAL SMS
+try{ db.prepare("UPDATE producers SET phone='+27718724388' WHERE name='Thabo Mokoena' AND (phone IS NULL OR phone='')").run();
+     db.prepare("UPDATE producers SET phone='+27716084771' WHERE name='Nomsa Dlamini' AND (phone IS NULL OR phone='')").run(); }catch(e){}
 
 // ---- helpers --------------------------------------------------------------
 const json=(res,code,obj)=>{res.writeHead(code,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));};
@@ -251,7 +255,8 @@ const server=http.createServer(async(req,res)=>{
       if(p==='/api/producers' && m==='POST'){
         const b=await body(req); if(!b.name)return json(res,400,{error:'name required'});
         const email=b.email||(b.name.toLowerCase().replace(/[^a-z ]/g,'').trim().replace(/ +/g,'.')+'@example.co.za');
-        const info=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email) VALUES(?,?,?,?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.ent||'—','Active',b.rica||'Verified',b.demo||'—',email);
+        let ph=(b.phone||'').replace(/[\s\-()]/g,''); if(ph.startsWith('0'))ph='+27'+ph.slice(1); else if(ph.startsWith('27'))ph='+'+ph; else if(ph&&!ph.startsWith('+'))ph='+'+ph;
+        const info=db.prepare('INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email,phone) VALUES(?,?,?,?,?,?,?,?,?)').run(b.name,b.prov||'GP',b.dist||'—',b.ent||'—','Active',b.rica||'Verified',b.demo||'—',email,ph);
         logAudit(b.actor||'Admin',`Beneficiary added: ${b.name}`,'info');
         return json(res,200,db.prepare('SELECT * FROM producers WHERE id=?').get(info.lastInsertRowid));
       }
@@ -292,8 +297,10 @@ const server=http.createServer(async(req,res)=>{
         const no=nextVoucherNo(); const otp=otp4();
         db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at,expiry) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
           .run(no,b.who,provOf(b.who),pk.name,pk.val,'Issued',otp,'',today(),'',fyEnd());
-        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — SMS sent with OTP; valid until ${fyEnd()}`,'info');
-        return json(res,200,{no,val:pk.val,otp,expiry:fyEnd()});
+        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — valid until ${fyEnd()}`,'info');
+        const ph=db.prepare('SELECT phone FROM producers WHERE name=?').get(b.who); let sms=null;
+        if(ph&&ph.phone) sms=await sendSms(ph.phone, `DoA e-Voucher: You have received ${pk.name} (R${pk.val}). Redeem at an accredited agro-dealer with OTP ${otp}. Valid until ${fyEnd()}. Ref ${no}.`);
+        return json(res,200,{no,val:pk.val,otp,expiry:fyEnd(),sms});
       }
       mm=p.match(/^\/api\/vouchers\/(\d+)\/redeem$/);
       if(mm && m==='POST'){
@@ -310,6 +317,8 @@ const server=http.createServer(async(req,res)=>{
         const ref='PG-'+Date.now().toString().slice(-8);
         db.prepare("INSERT INTO payments(ts,supplier,voucher_no,who,amount,gateway,ref,status) VALUES(?,?,?,?,?,?,?,?)").run(now(),dealer,v.no,v.who,v.val,'PayGate (gateway)',ref,'Paid');
         logAudit(v.who,`Voucher ${v.no} redeemed at ${dealer} — OTP verified; payment R${v.val} to supplier (${ref}). Farmer confirmation code SMS-sent to verify receipt.`,'ok');
+        const rp=db.prepare('SELECT phone FROM producers WHERE name=?').get(v.who);
+        if(rp&&rp.phone) await sendSms(rp.phone, `DoA e-Voucher: Please confirm you received your inputs for voucher ${v.no}. Confirmation code: ${cc}.`);
         return json(res,200,{ok:true,paid:v.val,ref,confirm_code:cc});
       }
       // FARMER confirms they actually received the goods (added assurance, after redemption)
