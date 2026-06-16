@@ -191,7 +191,8 @@ for(const u of db.prepare('SELECT id,password FROM users').all()){ if(u.password
 try{ db.prepare("UPDATE producers SET phone='+27718724388' WHERE name='Thabo Mokoena' AND (phone IS NULL OR phone='')").run();
      db.prepare("UPDATE producers SET phone='+27716084771', name='Mr Oscar Ndou' WHERE name='Nomsa Dlamini'").run();
      db.prepare("UPDATE vouchers SET who='Mr Oscar Ndou' WHERE who='Nomsa Dlamini'").run();
-     db.prepare("UPDATE farmer_register SET name='Mr Oscar Ndou' WHERE name='Nomsa Dlamini'").run(); }catch(e){}
+     db.prepare("UPDATE farmer_register SET name='Mr Oscar Ndou' WHERE name='Nomsa Dlamini'").run();
+     db.prepare("INSERT INTO producers(name,prov,dist,ent,status,rica,demo,email,phone) SELECT 'Mrs Bongane Netshifhefhe','LP','Vhembe','Vegetables · 2ha','Active','Verified','F·38','bongane.netshifhefhe@example.co.za','+27785462294' WHERE NOT EXISTS(SELECT 1 FROM producers WHERE phone='+27785462294')").run(); }catch(e){}
 
 // ---- helpers --------------------------------------------------------------
 const json=(res,code,obj)=>{res.writeHead(code,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));};
