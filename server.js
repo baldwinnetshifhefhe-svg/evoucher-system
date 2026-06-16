@@ -187,9 +187,11 @@ if (db.prepare('SELECT COUNT(*) c FROM producers').get().c === 0){
 }
 // hash any plain-text passwords (one-time migration; safe to run every start)
 for(const u of db.prepare('SELECT id,password FROM users').all()){ if(u.password && !String(u.password).includes(':')) db.prepare('UPDATE users SET password=? WHERE id=?').run(hashPw(u.password), u.id); }
-// seed two test farmer cellphones so issuing them a voucher sends a REAL SMS
+// seed two test farmers' cellphones (and name the second Mr Oscar Ndou) so issuing a voucher sends a REAL SMS
 try{ db.prepare("UPDATE producers SET phone='+27718724388' WHERE name='Thabo Mokoena' AND (phone IS NULL OR phone='')").run();
-     db.prepare("UPDATE producers SET phone='+27716084771' WHERE name='Nomsa Dlamini' AND (phone IS NULL OR phone='')").run(); }catch(e){}
+     db.prepare("UPDATE producers SET phone='+27716084771', name='Mr Oscar Ndou' WHERE name='Nomsa Dlamini'").run();
+     db.prepare("UPDATE vouchers SET who='Mr Oscar Ndou' WHERE who='Nomsa Dlamini'").run();
+     db.prepare("UPDATE farmer_register SET name='Mr Oscar Ndou' WHERE name='Nomsa Dlamini'").run(); }catch(e){}
 
 // ---- helpers --------------------------------------------------------------
 const json=(res,code,obj)=>{res.writeHead(code,{'Content-Type':'application/json'});res.end(JSON.stringify(obj));};
