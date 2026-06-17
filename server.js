@@ -314,21 +314,30 @@ const server=http.createServer(async(req,res)=>{
         // RULE: no SMS = no voucher. The farmer can only redeem with the OTP we SMS them,
         // so a voucher that can't be delivered must not be issued. Check the phone + send + confirm BEFORE committing.
         const ph=db.prepare('SELECT phone FROM producers WHERE name=?').get(b.who);
-        if(!ph||!ph.phone) return json(res,400,{error:'Voucher NOT issued — '+b.who+' has no mobile number on file, so the voucher SMS (with the OTP) cannot be delivered. Add a phone number on the Beneficiaries register first.'});
+        // SMS sender ID not yet authorised by the Department, so voucher/OTP content is filtered (NOT_SENT) on every number.
+        // Default = DEMO: issue with the OTP shown on-screen, don't send. Once the Dept authorises the sender, set env SMS_LIVE=true
+        // and the strict "no SMS = no voucher" rule (real send + delivery check) applies again automatically.
+        const demo=!process.env.SMS_LIVE;
+        if(!demo && (!ph||!ph.phone)) return json(res,400,{error:'Voucher NOT issued — '+b.who+' has no mobile number on file, so the voucher SMS (with the OTP) cannot be delivered. Add a phone number on the Beneficiaries register first.'});
         const no=nextVoucherNo(); const otp=otp4();
-        const sms=await sendSms(ph.phone, `DoA e-Voucher: You have received ${pk.name} (R${pk.val}). Redeem at an accredited agro-dealer with OTP ${otp}. Valid until ${fyEnd()}. Ref ${no}.`);
-        if(sms.simulated){
-          // On a live server, "simulated" means NO gateway is configured -> nothing was really sent -> refuse (Baldwin's rule). Local dev still allowed.
-          if(process.env.RENDER) return json(res,400,{error:'Voucher NOT issued — no SMS gateway is configured on this server, so the voucher OTP cannot be delivered to '+ph.phone+'. Add BULKSMS_USERNAME and BULKSMS_PASSWORD to this service, then retry.', sms});
+        let sms;
+        if(demo){
+          sms={demo:true, sent:false, to:(ph&&ph.phone)||null};
         } else {
-          if(!sms.sent) return json(res,400,{error:'Voucher NOT issued — SMS could not be sent to '+ph.phone+': '+(sms.error||'unknown')+'. Fix the number, then retry.', sms});
-          // Confirm the network actually accepted it (catches WASPA Do-Not-Contact / inactive numbers, which return FAILED·NOT_SENT).
-          let st=null;
-          if(sms.ref){ for(const d of [1500,2000,2500,3000]){ await new Promise(r=>setTimeout(r,d)); st=await smsStatus(sms.ref); const t=String(st.status||'').toUpperCase(); if(t==='DELIVERED'||t==='SENT') break; if(t==='FAILED'||t==='REJECTED'||t==='UNDELIVERED'||String(st.detail||'').toUpperCase()==='NOT_SENT'){ return json(res,400,{error:'Voucher NOT issued — the network rejected the SMS to '+ph.phone+' ('+(st.detail||t)+'). This number is likely on the WASPA Do-Not-Contact list or is not SMS-active. Enable WASPA transactional consent in BulkSMS, or use a different number, then retry.', sms, delivery:st}); } } }
+          sms=await sendSms(ph.phone, `DoA e-Voucher: You have received ${pk.name} (R${pk.val}). Redeem at an accredited agro-dealer with OTP ${otp}. Valid until ${fyEnd()}. Ref ${no}.`);
+          if(sms.simulated){
+            // On a live server, "simulated" means NO gateway is configured -> nothing was really sent -> refuse (Baldwin's rule). Local dev still allowed.
+            if(process.env.RENDER) return json(res,400,{error:'Voucher NOT issued — no SMS gateway is configured on this server, so the voucher OTP cannot be delivered to '+ph.phone+'. Add BULKSMS_USERNAME and BULKSMS_PASSWORD to this service, then retry.', sms});
+          } else {
+            if(!sms.sent) return json(res,400,{error:'Voucher NOT issued — SMS could not be sent to '+ph.phone+': '+(sms.error||'unknown')+'. Fix the number, then retry.', sms});
+            // Confirm the network actually accepted it (catches WASPA Do-Not-Contact / inactive numbers, which return FAILED·NOT_SENT).
+            let st=null;
+            if(sms.ref){ for(const d of [1500,2000,2500,3000]){ await new Promise(r=>setTimeout(r,d)); st=await smsStatus(sms.ref); const t=String(st.status||'').toUpperCase(); if(t==='DELIVERED'||t==='SENT') break; if(t==='FAILED'||t==='REJECTED'||t==='UNDELIVERED'||String(st.detail||'').toUpperCase()==='NOT_SENT'){ return json(res,400,{error:'Voucher NOT issued — the network rejected the SMS to '+ph.phone+' ('+(st.detail||t)+'). This number is likely on the WASPA Do-Not-Contact list or is not SMS-active. Enable WASPA transactional consent in BulkSMS, or use a different number, then retry.', sms, delivery:st}); } } }
+          }
         }
         db.prepare('INSERT INTO vouchers(no,who,prov,pkg,val,status,otp,dealer,created,redeemed_at,expiry) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
           .run(no,b.who,provOf(b.who),pk.name,pk.val,'Issued',otp,'',today(),'',fyEnd());
-        logAudit(b.who,`Voucher ${no} issued (${pk.name}) — SMS sent to ${ph.phone}; valid until ${fyEnd()}`,'info');
+        logAudit(b.who, demo ? `Voucher ${no} issued (${pk.name}) — DEMO mode, OTP shown on-screen (live SMS paused); valid until ${fyEnd()}` : `Voucher ${no} issued (${pk.name}) — SMS sent to ${ph.phone}; valid until ${fyEnd()}`,'info');
         return json(res,200,{no,val:pk.val,otp,expiry:fyEnd(),sms});
       }
       mm=p.match(/^\/api\/vouchers\/(\d+)\/redeem$/);
